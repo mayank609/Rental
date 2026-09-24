@@ -6,12 +6,8 @@ const TZ = "Asia/Kolkata";
 export const money = (paise: number | null | undefined, opts: { decimals?: boolean } = {}) => {
   if (paise == null) return "—";
   const rupees = paise / 100;
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: opts.decimals || rupees % 1 !== 0 ? 2 : 0,
-    minimumFractionDigits: opts.decimals ? 2 : 0,
-  }).format(rupees);
+  const digits = opts.decimals || paise % 100 !== 0 ? 2 : 0;
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: digits, minimumFractionDigits: digits }).format(rupees);
 };
 
 /** ₹ input (string/number) → paise integer */

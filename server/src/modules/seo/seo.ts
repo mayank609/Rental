@@ -143,19 +143,23 @@ export async function metaForPath(pathname: string): Promise<PageMeta> {
     ]);
     const locality = city && localitySlug ? await prisma.locality.findUnique({ where: { cityId_slug: { cityId: city.id, slug: localitySlug } } }) : null;
     const cityName = city?.name ?? titleCase(citySlug);
-    const where = locality ? `${locality.name}, ${cityName}` : cityName;
+    const place = locality ? `${locality.name}, ${cityName}` : cityName;
     const what = cat ? cat.name : "items";
-    const listings = city
+    const where = city
+      ? { cityId: city.id, status: "ACTIVE" as const, deletedAt: null, ...(cat ? { OR: [{ categoryId: cat.id }, { subcategoryId: cat.id }, { category: { parentId: cat.id } }] } : {}), ...(locality ? { localityId: locality.id } : {}) }
+      : null;
+    const total = where ? await prisma.listing.count({ where }) : 0;
+    const listings = where
       ? await prisma.listing.findMany({
-          where: { cityId: city.id, status: "ACTIVE", deletedAt: null, ...(cat ? { OR: [{ categoryId: cat.id }, { subcategoryId: cat.id }] } : {}), ...(locality ? { localityId: locality.id } : {}) },
+          where,
           take: 20,
           orderBy: [{ featuredUntil: { sort: "desc", nulls: "last" } }, { ratingAvg: "desc" }],
           select: { id: true, slug: true, title: true, priceDaily: true, priceHourly: true },
         })
       : [];
     return {
-      title: `Rent ${what} in ${where} | ${env.PLATFORM_NAME}`,
-      description: `Browse ${city?.listingCount ?? "local"} ${what.toLowerCase()} for rent in ${where}. Pay securely, pick up nearby, deposit protected.`,
+      title: `Rent ${what} in ${place} | ${env.PLATFORM_NAME}`,
+      description: `Browse ${total || "local"} ${what.toLowerCase()} for rent in ${place}. Pay securely, pick up nearby, deposit protected.`,
       canonical: `${env.APP_URL}${pathname.replace(/\/$/, "")}`,
       status: city ? 200 : 404,
       jsonLd: [
@@ -163,11 +167,11 @@ export async function metaForPath(pathname: string): Promise<PageMeta> {
         {
           "@context": "https://schema.org",
           "@type": "ItemList",
-          name: `${what} for rent in ${where}`,
+          name: `${what} for rent in ${place}`,
           itemListElement: listings.map((l, i) => ({ "@type": "ListItem", position: i + 1, url: `${env.APP_URL}/listing/${l.id}/${l.slug}`, name: l.title })),
         },
       ],
-      bodyHtml: `<h1>Rent ${esc(what)} in ${esc(where)}</h1><ul>${listings.map((l) => `<li><a href="/listing/${l.id}/${esc(l.slug)}">${esc(l.title)}</a> — ${esc(formatMoney(l.priceDaily ?? (l.priceHourly ?? 0) * 24))}/day</li>`).join("")}</ul>`,
+      bodyHtml: `<h1>Rent ${esc(what)} in ${esc(place)}</h1><ul>${listings.map((l) => `<li><a href="/listing/${l.id}/${esc(l.slug)}">${esc(l.title)}</a> — ${esc(formatMoney(l.priceDaily ?? (l.priceHourly ?? 0) * 24))}/day</li>`).join("")}</ul>`,
     };
   }
   return base;
@@ -193,6 +197,27 @@ export function renderHead(m: PageMeta) {
 seoRouter.get("/api/v1/seo/meta", async (req, res) => {
   const p = String(req.query.path ?? "/");
   res.json(await metaForPath(p.startsWith("/") ? p : `/${p}`));
+});
+
+/**
+ * Standalone crawler snapshot for split deployments (static SPA on a CDN):
+ * the CDN/edge routes bot user-agents here. Humans are sent to the SPA.
+ */
+seoRouter.get("/seo/render", async (req, res) => {
+  const p = String(req.query.path ?? "/");
+  const meta = await metaForPath(p.startsWith("/") ? p : `/${p}`);
+  res.status(meta.status ?? 200).type("html").send(`<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    ${renderHead(meta)}
+  </head>
+  <body>
+    ${meta.bodyHtml ?? `<h1>${esc(meta.title)}</h1><p>${esc(meta.description)}</p>`}
+    <p><a href="${esc(meta.canonical)}">Open in ${esc(env.PLATFORM_NAME)}</a></p>
+  </body>
+</html>`);
 });
 
 /** Serve the SPA with injected meta tags (single-service deployments). */

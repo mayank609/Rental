@@ -1,0 +1,29 @@
+name: Deploy
+
+# Deploys on pushes to main after CI passes. Configure secrets:
+#   RENDER_DEPLOY_HOOK_API, RENDER_DEPLOY_HOOK_WORKER (Render → service → Deploy hook)
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Render deploys (API + worker; migrations run on API start)
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_API }}"
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WORKER }}"
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Deploy web to Vercel
+        run: npx vercel deploy --prod --token "${{ secrets.VERCEL_TOKEN }}" --yes
+        working-directory: client
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

@@ -1,0 +1,65 @@
+# Local full stack: PostGIS, Redis, API, worker, web.
+#   cp .env.example .env && docker compose up --build
+#   docker compose exec api npx tsx prisma/seed.ts   (or: npm run db:seed locally)
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: rental
+      POSTGRES_PASSWORD: rental
+      POSTGRES_DB: rental
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rental"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: { context: ., dockerfile: server/Dockerfile }
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rental:rental@db:5432/rental
+      REDIS_URL: redis://redis:6379
+      RUN_WORKERS_IN_API: "false"
+      PORT: "4000"
+    ports: ["4000:4000"]
+    volumes: [uploads:/app/server/uploads]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build: { context: ., dockerfile: server/Dockerfile }
+    command: ["node", "dist/worker.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rental:rental@db:5432/rental
+      REDIS_URL: redis://redis:6379
+    volumes: [uploads:/app/server/uploads]
+    depends_on:
+      api: { condition: service_started }
+
+  web:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      args:
+        VITE_API_URL: ""
+    ports: ["8080:80"]
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
