@@ -1,0 +1,50 @@
+{
+  "name": "@rentnest/client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "tsc -b --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^22.20.4",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^25.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3",
+    "vite-plugin-pwa": "^0.21.2",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.2",
+    "axios": "^1.20.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-day-picker": "^9.14.0",
+    "react-dom": "^18.3.1",
+    "react-helmet-async": "^2.0.5",
+    "react-hot-toast": "^2.6.1",
+    "react-leaflet": "^4.2.1",
+    "react-router-dom": "^6.30.6",
+    "recharts": "^2.15.4",
+    "socket.io-client": "^4.8.3",
+    "zustand": "^5.0.15"
+  }
+}
