@@ -292,7 +292,7 @@ export default function BrowsePage() {
       </div>
 
       {/* Toolbar */}
-      <div className="sticky top-16 z-30 -mx-4 mt-5 flex items-center gap-2 border-b border-slate-200/70 bg-slate-50/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+      <div className="sticky top-16 z-30 -mx-4 mt-5 flex flex-wrap items-center gap-2 border-b border-slate-200/70 bg-slate-50/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
         <button onClick={() => setFiltersOpen(true)} className={clsx("chip", view === "list" && "lg:hidden", activeCount > 0 && "chip-active")}>
           <SlidersHorizontal className="h-4 w-4" /> Filters{activeCount > 0 && ` (${activeCount})`}
         </button>

@@ -30,7 +30,7 @@ export function PageHeader({ title, subtitle, action, back }: { title: ReactNode
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
+          {subtitle && <div className="mt-1 text-sm text-slate-600">{subtitle}</div>}
         </div>
         {action && <div className="flex flex-wrap gap-2">{action}</div>}
       </div>

@@ -119,7 +119,7 @@ export default function OverviewPage() {
 
       <div className="mt-8 grid gap-8 xl:grid-cols-5">
         {/* Needs attention */}
-        <section className="xl:col-span-3">
+        <section className="min-w-0 xl:col-span-3">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">Needs your attention</h2>
             {attention.length > 0 && <Badge tone="amber">{(ownerAction.data?.meta.total ?? 0) + (renterAction.data?.meta.total ?? 0)}</Badge>}
@@ -148,7 +148,7 @@ export default function OverviewPage() {
         </section>
 
         {/* Upcoming */}
-        <section className="xl:col-span-2">
+        <section className="min-w-0 xl:col-span-2">
           <h2 className="mb-3 text-lg font-bold text-slate-900">Upcoming & in progress</h2>
           <Card padded={false}>
             {dash.isLoading ? (
