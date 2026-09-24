@@ -54,6 +54,9 @@ export function useBookingDraft(listing: Listing | undefined, initial?: Partial<
   const update = (patch: Partial<BookingDraft>) =>
     setDraft((d) => {
       const next = { ...d, ...patch };
+      // Growing a same-day (hourly) pick into multiple days: default to whole days again.
+      const wasSameDay = d.range?.from && d.range.to && isSameDay(d.range.from, d.range.to);
+      if (patch.range && !patch.endTime && wasSameDay && next.range?.from && next.range.to && !isSameDay(next.range.from, next.range.to)) next.endTime = next.startTime;
       // Picking a single day on an hourly listing: make the end time sensible.
       if (patch.range && listing?.pricing.hourly && next.range?.from && next.range.to && isSameDay(next.range.from, next.range.to)) {
         const sh = Number(next.startTime.slice(0, 2));

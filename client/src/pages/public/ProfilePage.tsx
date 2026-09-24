@@ -162,7 +162,7 @@ export default function ProfilePage() {
           <div className="min-w-0 space-y-12">
             <section>
               <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-900"><Package className="h-5 w-5 text-brand-600" /> {isMe ? "Your" : `${u.name.split(" ")[0]}'s`} items ({listings.length})</h2>
-              {listings.length ? <ListingGrid listings={listings} className="xl:grid-cols-3" /> : <EmptyState title="No items listed yet" description={isMe ? "List something you own and start earning." : undefined} action={isMe ? <ButtonLink to="/dashboard/listings/new">List an item</ButtonLink> : undefined} />}
+              {listings.length ? <ListingGrid listings={listings} narrow className="xl:grid-cols-3" /> : <EmptyState title="No items listed yet" description={isMe ? "List something you own and start earning." : undefined} action={isMe ? <ButtonLink to="/dashboard/listings/new">List an item</ButtonLink> : undefined} />}
             </section>
 
             <section>

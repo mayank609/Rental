@@ -223,7 +223,7 @@ export default function BrowsePage() {
   const results = search.isError ? (
     <ErrorState error={search.error} onRetry={() => search.refetch()} />
   ) : search.isLoading ? (
-    <ListingGrid loading skeletons={view === "map" ? 6 : 12} className={view === "map" ? "xl:grid-cols-2 lg:grid-cols-2" : undefined} />
+    <ListingGrid loading skeletons={view === "map" ? 6 : 12} narrow={view === "map"} />
   ) : listings.length === 0 ? (
     <div className="space-y-8">
       <EmptyState
@@ -240,13 +240,13 @@ export default function BrowsePage() {
       {fallback?.listings.length ? (
         <div>
           <h2 className="mb-4 text-lg font-bold text-slate-900">Closest to {place || "you"}</h2>
-          <ListingGrid listings={fallback.listings} onHover={setHovered} className={view === "map" ? "lg:grid-cols-2 xl:grid-cols-2" : undefined} />
+          <ListingGrid listings={fallback.listings} onHover={setHovered} narrow={view === "map"} />
         </div>
       ) : null}
     </div>
   ) : (
     <>
-      <ListingGrid listings={listings} onHover={setHovered} className={clsx(view === "map" && "lg:grid-cols-2 xl:grid-cols-2", search.isFetching && "opacity-60 transition-opacity")} />
+      <ListingGrid listings={listings} onHover={setHovered} narrow={view === "map"} className={clsx(search.isFetching && "opacity-60 transition-opacity")} />
       <Pagination page={page} totalPages={search.data?.meta.totalPages ?? 1} onChange={(p) => patchQuery({ page: p })} />
     </>
   );
@@ -267,14 +267,14 @@ export default function BrowsePage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">{heading}</h1>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
             {search.isLoading ? <Skeleton className="h-4 w-24" /> : <span>{total.toLocaleString("en-IN")} item{total === 1 ? "" : "s"}</span>}
             {search.isFetching && !search.isLoading && <Spinner className="h-3.5 w-3.5 text-brand-600" />}
             <span aria-hidden>·</span>
             <button onClick={() => { pickerUsed.current = true; setPickerOpen(true); }} className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
               <MapPin className="h-3.5 w-3.5" /> {place || "Anywhere"} · change
             </button>
-          </p>
+          </div>
         </div>
         <form
           role="search"
@@ -293,7 +293,7 @@ export default function BrowsePage() {
 
       {/* Toolbar */}
       <div className="sticky top-16 z-30 -mx-4 mt-5 flex items-center gap-2 border-b border-slate-200/70 bg-slate-50/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-        <button onClick={() => setFiltersOpen(true)} className={clsx("chip lg:hidden", activeCount > 0 && "chip-active")}>
+        <button onClick={() => setFiltersOpen(true)} className={clsx("chip", view === "list" && "lg:hidden", activeCount > 0 && "chip-active")}>
           <SlidersHorizontal className="h-4 w-4" /> Filters{activeCount > 0 && ` (${activeCount})`}
         </button>
         {bbox && (

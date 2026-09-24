@@ -79,11 +79,11 @@ export function useWishlistIds() {
 /* ------------------------------------------------------------ listing grid */
 
 export function ListingGrid({
-  listings, loading, skeletons = 8, onHover, className,
-}: { listings?: Listing[]; loading?: boolean; skeletons?: number; onHover?: (id: string | null) => void; className?: string }) {
+  listings, loading, skeletons = 8, onHover, className, narrow,
+}: { listings?: Listing[]; loading?: boolean; skeletons?: number; onHover?: (id: string | null) => void; className?: string; /** max 2 columns (e.g. beside a map) */ narrow?: boolean }) {
   const wished = useWishlistIds();
   return (
-    <div className={clsx("grid grid-cols-1 gap-x-5 gap-y-8 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", className)}>
+    <div className={clsx("grid grid-cols-1 gap-x-5 gap-y-8 min-[480px]:grid-cols-2", narrow ? "" : "lg:grid-cols-3 xl:grid-cols-4", className)}>
       {loading
         ? Array.from({ length: skeletons }, (_, i) => <ListingCardSkeleton key={i} />)
         : listings?.map((l) => <ListingCard key={l.id} listing={l} wishlisted={wished.has(l.id)} onHover={onHover} />)}

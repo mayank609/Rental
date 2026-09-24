@@ -29,11 +29,12 @@ export function countActiveFilters(v: BrowseFilterValues, category?: string | nu
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const id = `f-${title.toLowerCase().replace(/\W+/g, "-")}`;
   return (
-    <fieldset className="border-b border-slate-100 py-5 first:pt-0 last:border-0">
-      <legend className="mb-3 text-sm font-semibold text-slate-900">{title}</legend>
+    <div role="group" aria-labelledby={id} className="border-b border-slate-100 py-5 first:pt-0 last:border-0">
+      <h3 id={id} className="mb-3 text-sm font-semibold text-slate-900">{title}</h3>
       {children}
-    </fieldset>
+    </div>
   );
 }
 

@@ -38,7 +38,7 @@ export function ImageGallery({ images, title }: { images: ListingImage[]; title:
         </button>
         {(rest.length >= 4 ? rest.slice(0, 4) : rest.slice(0, 1)).map((img, i) => (
           <button key={img.id} onClick={() => setOpen(i + 1)} className="group relative overflow-hidden" aria-label={`Open photo ${i + 2}`}>
-            <img src={img.thumbUrl} srcSet={srcSet(img)} sizes="(max-width: 1024px) 30vw, 320px" alt={`${title} — photo ${i + 2}`} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+            <img src={rest.length >= 4 ? img.thumbUrl : img.mediumUrl} srcSet={srcSet(img)} sizes={rest.length >= 4 ? "(max-width: 1024px) 30vw, 320px" : "(max-width: 1024px) 50vw, 640px"} alt={`${title} — photo ${i + 2}`} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
           </button>
         ))}
         {images.length > 1 && (
