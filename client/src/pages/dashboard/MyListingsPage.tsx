@@ -9,7 +9,8 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import { AlertTriangle, CalendarRange, Crown, Eye, ExternalLink, ImageOff, MoreVertical, Package, Pause, Pencil, Play, Plus, Rocket, Sparkles, Star, Trash2 } from "lucide-react";
 import { api, apiError, apiErrorCode } from "@/lib/api";
-import { displayPrice, fmtDate, listingPath, money } from "@/lib/format";
+import { format } from "date-fns";
+import { displayPrice, listingPath, money } from "@/lib/format";
 import type { Listing, ListingStatus, PageMeta } from "@/lib/types";
 import { useAuth } from "@/stores/auth";
 import { Seo } from "@/components/Seo";
@@ -188,9 +189,9 @@ function ListingTile({ l, busy, onEdit, onToggle, onBoost, onDelete }: { l: List
     <Card padded={false} className="flex flex-col overflow-hidden">
       <div className="relative aspect-[16/10] bg-slate-100">
         {l.images[0] ? <img src={l.images[0].mediumUrl || l.images[0].thumbUrl} alt="" loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-slate-400"><ImageOff className="h-6 w-6" /></div>}
-        <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+        <div className="absolute left-2 right-12 top-2 flex flex-wrap gap-1">
           <Badge tone={s.tone} className="shadow-sm">{s.label}</Badge>
-          {featured && <Badge tone="amber" icon={<Sparkles className="h-3 w-3" />} className="shadow-sm">Featured until {fmtDate(l.featuredUntil!)}</Badge>}
+          {featured && <Badge tone="amber" icon={<Sparkles className="h-3 w-3" />} className="shadow-sm">Featured · till {format(new Date(l.featuredUntil!), "d MMM")}</Badge>}
         </div>
         <div className="absolute right-2 top-2">
           <button onClick={() => setMenu((m) => !m)} className="rounded-full bg-white/95 p-1.5 text-slate-700 shadow hover:bg-white" aria-label="More actions" aria-expanded={menu}>

@@ -85,6 +85,9 @@ export function useNow(ms = 30_000) {
   return now;
 }
 
+/** Whole-rupee amount for compact stat tiles (exact paise stay in details). */
+export const moneyShort = (paise: number | null | undefined) => money(paise == null ? paise : Math.round(paise / 100) * 100);
+
 export function formatLeft(msLeft: number) {
   if (msLeft <= 0) return "expired";
   const mins = Math.floor(msLeft / 60_000);

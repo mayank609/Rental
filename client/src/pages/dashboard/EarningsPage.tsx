@@ -14,7 +14,7 @@ import type { PageMeta } from "@/lib/types";
 import { useAuth } from "@/stores/auth";
 import { Seo } from "@/components/Seo";
 import { Alert, Badge, Button, Card, EmptyState, Input, Pagination, Skeleton, Stat, type Tone } from "@/components/ui";
-import { ErrorState, INVOICE_TYPE_LABEL, PageHeader, useInvoiceDownload } from "@/components/dashboard/common";
+import { ErrorState, INVOICE_TYPE_LABEL, PageHeader, moneyShort, useInvoiceDownload } from "@/components/dashboard/common";
 import type { EarningsSummary, InvoiceRow, PayoutAccount, PayoutRow, PayoutStatus } from "@/components/dashboard/types";
 
 const PAYOUT_STATUS: Record<PayoutStatus, { label: string; tone: Tone }> = {
@@ -56,10 +56,10 @@ export default function EarningsPage() {
         <ErrorState error={payouts.error} onRetry={() => payouts.refetch()} />
       ) : s ? (
         <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Paid out" value={money(s.paid)} icon={<CheckCircle2 className="h-5 w-5" />} tone="green" sub="All time" />
-          <Stat label="Upcoming" value={money(s.upcoming)} icon={<CalendarClock className="h-5 w-5" />} tone="blue" sub="Scheduled / processing" />
-          <Stat label="Pending" value={money(s.pending)} icon={<Hourglass className="h-5 w-5" />} tone="gray" sub="Rentals in progress" />
-          <Stat label="On hold" value={money(s.onHold)} icon={<PauseCircle className="h-5 w-5" />} tone={s.onHold ? "red" : "gray"} sub={s.onHold ? "Action needed" : "Nothing on hold"} />
+          <Stat label="Paid out" value={moneyShort(s.paid)} icon={<CheckCircle2 className="h-5 w-5" />} tone="green" sub="All time" />
+          <Stat label="Upcoming" value={moneyShort(s.upcoming)} icon={<CalendarClock className="h-5 w-5" />} tone="blue" sub="Scheduled / processing" />
+          <Stat label="Pending" value={moneyShort(s.pending)} icon={<Hourglass className="h-5 w-5" />} tone="gray" sub="Rentals in progress" />
+          <Stat label="On hold" value={moneyShort(s.onHold)} icon={<PauseCircle className="h-5 w-5" />} tone={s.onHold ? "red" : "gray"} sub={s.onHold ? "Action needed" : "Nothing on hold"} />
         </div>
       ) : null}
       {s && s.failed > 0 && (
@@ -125,7 +125,7 @@ export default function EarningsPage() {
                           )}
                           {p.failureReason && <span className="block text-xs text-red-600">{p.failureReason}</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{payoutDate(p)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">{payoutDate(p)}</td>
                         <td className="px-4 py-3">
                           <Badge tone={PAYOUT_STATUS[p.status]?.tone ?? "gray"}>{PAYOUT_STATUS[p.status]?.label ?? p.status}</Badge>
                         </td>

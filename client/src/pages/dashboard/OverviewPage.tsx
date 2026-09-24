@@ -13,7 +13,7 @@ import { useAuth } from "@/stores/auth";
 import { Seo } from "@/components/Seo";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Alert, Badge, ButtonLink, Card, EmptyState, Skeleton, Stat } from "@/components/ui";
-import { BookingListCard, ErrorState, PageHeader, useNotificationEvent } from "@/components/dashboard/common";
+import { BookingListCard, ErrorState, PageHeader, moneyShort, useNotificationEvent } from "@/components/dashboard/common";
 import type { DashboardSummary, PayoutAccount } from "@/components/dashboard/types";
 
 export default function OverviewPage() {
@@ -103,7 +103,7 @@ export default function OverviewPage() {
               <Stat label="Pending requests" value={d.ownerBookings.pendingRequests} sub={`${d.ownerBookings.upcoming} upcoming · ${d.ownerBookings.active} active`} icon={<CalendarCheck className="h-5 w-5" />} tone={d.ownerBookings.pendingRequests ? "amber" : "blue"} />
             </Link>
             <Link to="/dashboard/earnings" className="block rounded-2xl">
-              <Stat label="Earnings paid" value={money(d.earnings.paid)} sub={`${money(d.earnings.upcoming + d.earnings.pending)} upcoming`} icon={<Wallet className="h-5 w-5" />} tone="green" />
+              <Stat label="Earnings paid" value={moneyShort(d.earnings.paid)} sub={`${moneyShort(d.earnings.upcoming + d.earnings.pending)} upcoming`} icon={<Wallet className="h-5 w-5" />} tone="green" />
             </Link>
             <Link to="/dashboard/listings" className="block rounded-2xl">
               <Stat label="Listings" value={d.listings.total} sub={`${d.listings.active} active`} icon={<Package className="h-5 w-5" />} tone="brand" />
