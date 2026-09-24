@@ -241,7 +241,9 @@ export function ChipMultiSelect({ values, onChange, options }: { values: string[
 
 // ------------------------------------------------------------ misc
 export function Mono({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={clsx("font-mono text-xs text-slate-600", className)}>{children}</span>;
+  // Only apply default size/colour when the caller doesn't override them (avoids Tailwind class conflicts)
+  const has = (re: RegExp) => Boolean(className && re.test(className));
+  return <span className={clsx("font-mono", !has(/(^|\s)text-(xs|sm|base|lg|xl|\dxl)/) && "text-xs", !has(/(^|\s)text-(slate|red|emerald|brand|amber|violet|sky)-/) && "text-slate-600", className)}>{children}</span>;
 }
 
 /** Click-to-enlarge image thumbnail. */

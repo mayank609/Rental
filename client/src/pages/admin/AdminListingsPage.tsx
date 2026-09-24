@@ -76,7 +76,7 @@ export default function AdminListingsPage() {
         </div>
       ),
     },
-    { key: "owner", header: "Owner", hideBelow: "md", sort: (l) => l.owner?.name ?? "", cell: (l) => (l.owner ? <Link to={`/admin/users/${l.owner.id}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand-700">{l.owner.name}</Link> : "—") },
+    { key: "owner", header: "Owner", hideBelow: "md", sort: (l) => l.owner?.name ?? "", cell: (l) => (l.owner ? <Link to={`/admin/users/${l.owner.id}`} onClick={(e) => e.stopPropagation()} className="whitespace-nowrap hover:text-brand-700">{l.owner.name}</Link> : "—") },
     { key: "city", header: "City", hideBelow: "sm", sort: (l) => l.location.city?.name ?? "", cell: (l) => <span>{l.location.city?.name ?? "—"}{l.location.locality && <span className="block text-xs text-slate-500">{l.location.locality.name}</span>}</span> },
     { key: "price", header: "Price", align: "right", sort: (l) => displayPrice(l.pricing).amount, cell: (l) => { const p = displayPrice(l.pricing); return <span className="tabular-nums">{money(p.amount)}<span className="text-xs text-slate-500">/{p.unit}</span></span>; } },
     { key: "status", header: "Status", sort: (l) => l.status, cell: (l) => <StatusPill status={l.status} /> },

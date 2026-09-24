@@ -119,8 +119,10 @@ export async function cityAnalytics(days: number) {
   return rows.map((r) => {
     const supply = Number(r.supply);
     const demand = Number(r.searches) + Number(r.requests) * 5;
+    const { zero_result: _zero, ...rest } = r;
+    void _zero;
     return {
-      ...r,
+      ...rest,
       supply,
       searches: Number(r.searches),
       zeroResultSearches: Number(r.zero_result),

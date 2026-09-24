@@ -47,6 +47,7 @@ export default function AdminAnalyticsPage() {
   const citiesQ = useQuery({
     queryKey: ["admin", "analytics", "cities", f.days],
     queryFn: async () => (await api.get<{ cities: CityAnalyticsRow[] }>("/admin/analytics/cities", { params: { days: f.days } })).data.cities,
+    retry: 1,
   });
   // City list for the selector comes from /admin/cities so the map works independently of the table.
   const cityListQ = useQuery({ queryKey: ["admin", "cities"], queryFn: async () => (await api.get<{ cities: AdminCity[] }>("/admin/cities")).data.cities });

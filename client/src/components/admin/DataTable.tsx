@@ -81,7 +81,7 @@ export function DataTable<T>({
 
   return (
     <div className={clsx("card overflow-hidden", className)}>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead className="bg-slate-50/80">

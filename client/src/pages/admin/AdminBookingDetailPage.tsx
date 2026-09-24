@@ -11,7 +11,7 @@ import { api, apiError } from "@/lib/api";
 import { fmtDateTime, fmtRange, money } from "@/lib/format";
 import { Avatar, Button, PageLoader, VerifiedBadge } from "@/components/ui";
 import { PriceBreakdown } from "@/components/PriceBreakdown";
-import { ErrorPanel, KeyValue, Mono, PageHeader, Panel, StatusPill } from "@/components/admin/AdminUi";
+import { ErrorPanel, KeyValue, PageHeader, Panel, StatusPill } from "@/components/admin/AdminUi";
 import { ChecklistGrid } from "@/components/admin/ChecklistGrid";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { JsonViewer } from "@/components/admin/JsonViewer";
@@ -46,7 +46,7 @@ export default function AdminBookingDetailPage() {
     <div>
       <PageHeader
         back={{ to: "/admin/bookings", label: "Bookings" }}
-        title={<Mono className="text-2xl font-bold text-slate-900">{b.code}</Mono>}
+        title={<span className="font-mono">{b.code}</span>}
         badge={<StatusPill status={b.status} kind="booking" />}
         subtitle={<><Link to={`/admin/listings?tab=all&q=${b.listing.id}`} className="link">{b.listing.title}</Link> · {b.listing.city}{b.listing.locality ? `, ${b.listing.locality}` : ""} · {fmtRange(b.startAt, b.endAt)}</>}
         actions={
@@ -190,6 +190,7 @@ export default function AdminBookingDetailPage() {
             </dl>
           </Panel>
           <Panel title="Timeline">
+            {b.events.length === 0 && <p className="text-sm text-slate-500">No events recorded.</p>}
             <ol className="relative space-y-3 border-l border-slate-200 pl-4">
               {b.events.map((e) => (
                 <li key={e.id} className="text-sm">

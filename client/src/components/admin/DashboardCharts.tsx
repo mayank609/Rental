@@ -132,7 +132,13 @@ function Funnel({ steps }: { steps: { stage: string; count: number }[] }) {
               <span className="font-medium text-slate-800">{s.stage}</span>
               <span className="tabular-nums text-slate-900">
                 {s.count.toLocaleString("en-IN")}
-                {conv != null && <span className="ml-2 text-xs font-semibold text-slate-500">{conv}%</span>}
+                {conv != null &&
+                  (conv <= 100 ? (
+                    <span className="ml-2 text-xs font-semibold text-slate-500">{conv}%</span>
+                  ) : (
+                    // e.g. instant bookings skip "Accepted", so Paid can exceed it
+                    <span className="ml-2 cursor-help text-xs font-semibold text-slate-400" title="Exceeds the previous step (instant bookings skip acceptance)">n/a</span>
+                  ))}
               </span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">

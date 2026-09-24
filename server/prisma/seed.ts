@@ -346,7 +346,13 @@ async function main() {
   // A couple of trust & safety items for the admin queues
   await prisma.flag.create({ data: { type: "OFF_PLATFORM_ATTEMPT", userId: renters[3].id, severity: 2, details: { attempts: 3, lastHits: ["phone"] } } });
   await prisma.report.create({ data: { reporterId: renter.id, targetType: "LISTING", targetId: listings[7].id, reason: "FAKE_LISTING", details: "Photos look like stock images." } });
-  await prisma.kycDocument.create({ data: { userId: owners[1].id, docType: "PAN", docNumberMasked: "XXXXXX234F", fileKey: "kyc/sample.pdf" } });
+  // Sample KYC document (a generated image) so the admin viewer has a real file
+  const kycImg = await sharp({ create: { width: 900, height: 560, channels: 3, background: { r: 241, g: 245, b: 249 } } })
+    .composite([{ input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560"><rect x="20" y="20" width="860" height="520" rx="24" fill="#fff" stroke="#4f46e5" stroke-width="4"/><text x="60" y="110" font-family="Arial" font-size="40" font-weight="700" fill="#111">SAMPLE ID DOCUMENT</text><text x="60" y="180" font-family="Arial" font-size="28" fill="#374151">Name: ${owners[1].name}</text><text x="60" y="230" font-family="Arial" font-size="28" fill="#374151">PAN: XXXXXX234F</text><text x="60" y="480" font-family="Arial" font-size="22" fill="#9ca3af">Demo data — not a real document</text></svg>`) }])
+    .png()
+    .toBuffer();
+  await storage.put("kyc/sample.png", kycImg, "image/png", true);
+  await prisma.kycDocument.create({ data: { userId: owners[1].id, docType: "PAN", docNumberMasked: "XXXXXX234F", fileKey: "kyc/sample.png" } });
   await prisma.user.update({ where: { id: owners[1].id }, data: { kycStatus: "PENDING" } });
   await prisma.auditLog.create({ data: { actorId: admin.id, action: "seed", entityType: "System", entityId: "seed" } });
 
