@@ -69,7 +69,7 @@ export default function EarningsPage() {
       )}
 
       <div className="mt-8 grid gap-8 xl:grid-cols-5">
-        <div className="space-y-8 xl:col-span-3">
+        <div className="min-w-0 space-y-8 xl:col-span-3">
           {/* Payout history */}
           <section>
             <h2 className="mb-3 text-lg font-bold text-slate-900">Payout history</h2>
@@ -144,7 +144,7 @@ export default function EarningsPage() {
           <InvoicesSection q={invoices} />
         </div>
 
-        <div className="xl:col-span-2">
+        <div className="min-w-0 xl:col-span-2">
           <PayoutAccountCard />
         </div>
       </div>

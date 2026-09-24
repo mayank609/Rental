@@ -99,7 +99,7 @@ export default function ListingCalendarPage() {
 
       {listing.isError && <ErrorState error={listing.error} onRetry={() => listing.refetch()} className="mb-6" />}
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-6 2xl:grid-cols-[1fr_340px]">
         <Card className="overflow-x-auto">
           <div className="mb-4 flex flex-wrap items-center gap-4 text-xs font-medium text-slate-600">
             <Legend className="bg-brand-600" label="Booked by renters" />
@@ -128,6 +128,7 @@ export default function ListingCalendarPage() {
             </div>
           )}
           <style>{`
+            .rn-booked.rdp-disabled { opacity: 1; }
             .rn-booked:not(.rdp-outside) .rdp-day_button { background: var(--color-brand-600); color: #fff; opacity: 1; border-radius: 10px; }
             .rn-blocked:not(.rdp-outside) .rdp-day_button { background-color: #94a3b8; background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,.45) 3px, rgba(255,255,255,.45) 6px); color: #fff; border-radius: 10px; }
             .rdp-range_start .rdp-day_button, .rdp-range_end .rdp-day_button { background: #f59e0b !important; border-color: #f59e0b; color: #fff; }
@@ -136,7 +137,7 @@ export default function ListingCalendarPage() {
           `}</style>
         </Card>
 
-        <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-1 2xl:content-start">
           <Card>
             <h2 className="flex items-center gap-2 font-semibold text-slate-900">
               <CalendarOff className="h-4 w-4 text-slate-500" /> Block dates

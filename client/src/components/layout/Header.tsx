@@ -18,7 +18,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <Link to="/" className={clsx("flex items-center gap-2 font-extrabold tracking-tight text-slate-900", className)} aria-label={`${PLATFORM_NAME} home`}>
       <img src="/favicon.svg" alt="" className="h-8 w-8" />
-      <span className="text-lg">{PLATFORM_NAME}</span>
+      <span className="text-lg max-[400px]:sr-only">{PLATFORM_NAME}</span>
     </Link>
   );
 }
@@ -83,7 +83,7 @@ export function Header() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search cameras, bikes, tents…" className="input rounded-full bg-slate-50 pl-10" aria-label="Search listings" />
         </form>
         <nav className="ml-auto flex items-center gap-1">
-          <ButtonLink to="/dashboard/listings/new" variant="secondary" size="sm" className="hidden sm:inline-flex" icon={<Plus className="h-4 w-4" />}>
+          <ButtonLink to="/dashboard/listings/new" variant="secondary" size="sm" className="max-sm:hidden" icon={<Plus className="h-4 w-4" />}>
             List an item
           </ButtonLink>
           {user ? (

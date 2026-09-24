@@ -308,7 +308,7 @@ export default function BookingDetailPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {/* Main column */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Dates & fulfilment */}
           <Card>
             <h3 className="font-semibold text-slate-900">Rental period</h3>
@@ -427,7 +427,8 @@ export default function BookingDetailPage() {
           {/* Timeline */}
           <Card>
             <h3 className="font-semibold text-slate-900">Timeline</h3>
-            <ol className="relative mt-4 space-y-4 border-l border-slate-200 pl-5">
+            {!b.events.length && <p className="mt-3 text-sm text-slate-500">Booked {fmtDateTime(b.timestamps.createdAt ?? b.agreement.acceptedAt)}. Updates will appear here.</p>}
+            <ol className={clsx("relative mt-4 space-y-4 border-l border-slate-200 pl-5", !b.events.length && "hidden")}>
               {b.events.map((e, i) => (
                 <li key={e.id} className="relative">
                   <span className={clsx("absolute -left-[27px] top-1 h-3 w-3 rounded-full ring-4 ring-white", i === b.events.length - 1 ? "bg-brand-600" : "bg-slate-300")} />
@@ -443,7 +444,7 @@ export default function BookingDetailPage() {
         </div>
 
         {/* Side column */}
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           {/* Listing */}
           <Card padded={false} className="overflow-hidden">
             <Link to={listingPath(b.listing)} className="flex gap-3 p-4 hover:bg-slate-50">
@@ -605,7 +606,7 @@ function Row({ label, value }: { label: ReactNode; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <dt>{label}</dt>
-      <dd className="tabular-nums">{value}</dd>
+      <dd className="whitespace-nowrap tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -719,7 +720,7 @@ function DetailSkeleton() {
       <Skeleton className="mt-3 h-8 w-2/3" />
       <Skeleton className="mt-6 h-40 w-full rounded-3xl" />
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <Skeleton className="h-40 w-full rounded-2xl" />
           <Skeleton className="h-56 w-full rounded-2xl" />
         </div>

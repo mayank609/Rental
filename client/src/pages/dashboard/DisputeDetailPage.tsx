@@ -126,7 +126,7 @@ export default function DisputeDetailPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Claim */}
           <Card>
             <h2 className="font-semibold text-slate-900">Claim</h2>
@@ -184,7 +184,7 @@ export default function DisputeDetailPage() {
           </Card>
         </div>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           {/* Booking */}
           <Card>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking</p>

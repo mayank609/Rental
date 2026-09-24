@@ -2,7 +2,10 @@
 import rateLimit, { Options } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import { redis } from "../lib/redis";
-import { isTest } from "../config/env";
+import { isProd, isTest } from "../config/env";
+
+// Generous limits outside production so local QA / E2E runs are not throttled.
+const scale = isProd ? 1 : 20;
 
 function make(prefix: string, opts: Partial<Options>) {
   return rateLimit({
@@ -18,6 +21,7 @@ function make(prefix: string, opts: Partial<Options>) {
         })
       : undefined,
     ...opts,
+    limit: typeof opts.limit === "number" ? opts.limit * scale : opts.limit,
   });
 }
 

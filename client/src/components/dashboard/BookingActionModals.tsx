@@ -165,7 +165,7 @@ export function CancelModal({ booking, open, onClose }: BaseProps) {
               <ul className="mt-1.5 space-y-1 text-sm text-slate-600">
                 {[...preview.data!.tiers].sort((a, b) => b.hoursBefore - a.hoursBefore).map((t) => (
                   <li key={t.hoursBefore} className="flex justify-between">
-                    <span>{t.hoursBefore > 0 ? `${t.hoursBefore >= 24 ? `${t.hoursBefore / 24} day(s)` : `${t.hoursBefore}h`}+ before start` : "After that"}</span>
+                    <span>{t.hoursBefore > 0 ? `${t.hoursBefore >= 24 && t.hoursBefore % 24 === 0 ? `${t.hoursBefore / 24} day${t.hoursBefore > 24 ? "s" : ""}` : `${t.hoursBefore} hours`}+ before start` : "After that"}</span>
                     <span className="font-medium">{t.refundPercent}% rent refund</span>
                   </li>
                 ))}
