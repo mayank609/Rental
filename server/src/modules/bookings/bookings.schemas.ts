@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assetUrlSchema } from "../../lib/assets";
 
 export const createBookingSchema = z
   .object({
@@ -30,7 +31,7 @@ export const checklistSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
   items: z.array(z.object({ label: z.string().max(120), ok: z.boolean() })).max(30).default([]),
   photos: z
-    .array(z.object({ url: z.string().url(), takenAt: z.coerce.date().optional(), lat: z.number().optional(), lng: z.number().optional() }))
+    .array(z.object({ url: assetUrlSchema, takenAt: z.coerce.date().optional(), lat: z.number().optional(), lng: z.number().optional() }))
     .min(1, "Add at least one photo as evidence")
     .max(12),
 });
@@ -42,7 +43,7 @@ export const inspectionSchema = z.discriminatedUnion("ok", [
     type: z.enum(["DAMAGE", "NOT_AS_DESCRIBED", "LATE_RETURN", "OTHER"]).default("DAMAGE"),
     description: z.string().trim().min(10).max(4000),
     claimAmount: z.coerce.number().int().min(0),
-    evidenceUrls: z.array(z.string().url()).max(12).default([]),
+    evidenceUrls: z.array(assetUrlSchema).max(12).default([]),
   }),
 ]);
 

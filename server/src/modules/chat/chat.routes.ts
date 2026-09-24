@@ -1,6 +1,7 @@
 /** /api/v1/chat — conversations & messages (real-time via socket.io). */
 import { Router } from "express";
 import { z } from "zod";
+import { assetUrlSchema } from "../../lib/assets";
 import { requireAuth } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { prisma } from "../../lib/prisma";
@@ -87,7 +88,7 @@ chatRouter.get(
 
 chatRouter.post(
   "/conversations/:id/messages",
-  validate({ body: z.object({ body: z.string().max(2000).default(""), attachments: z.array(z.string().url()).max(5).default([]) }) }),
+  validate({ body: z.object({ body: z.string().max(2000).default(""), attachments: z.array(assetUrlSchema).max(5).default([]) }) }),
   async (req, res) => {
     const m = await svc.sendMessage(req.params.id, req.user!.id, req.body.body, req.body.attachments);
     res.status(201).json({ message: m });

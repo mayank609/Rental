@@ -1,6 +1,7 @@
 /** /api/v1/disputes — raise & follow disputes (resolution lives in /admin). */
 import { Router } from "express";
 import { z } from "zod";
+import { assetUrlSchema } from "../../lib/assets";
 import { requireAuth } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { prisma } from "../../lib/prisma";
@@ -18,7 +19,7 @@ disputesRouter.post(
       type: z.enum(["DAMAGE", "NOT_RETURNED", "NOT_AS_DESCRIBED", "NO_SHOW", "LATE_RETURN", "PAYMENT", "OTHER"]),
       description: z.string().trim().min(10).max(4000),
       claimAmount: z.coerce.number().int().min(0).default(0),
-      evidenceUrls: z.array(z.string().url()).max(12).default([]),
+      evidenceUrls: z.array(assetUrlSchema).max(12).default([]),
     }),
   }),
   async (req, res) => {
@@ -53,7 +54,7 @@ disputesRouter.get("/:id", async (req, res) => {
   res.json({ dispute: d });
 });
 
-disputesRouter.post("/:id/evidence", validate({ body: z.object({ url: z.string().url().optional(), note: z.string().max(2000).optional() }) }), async (req, res) => {
+disputesRouter.post("/:id/evidence", validate({ body: z.object({ url: assetUrlSchema.optional(), note: z.string().max(2000).optional() }) }), async (req, res) => {
   const ev = await addEvidence(req.params.id, req.user!.id, req.body, req.user!.role !== "USER");
   res.status(201).json({ evidence: ev });
 });

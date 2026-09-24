@@ -10,7 +10,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { clientIp } from "../../middleware/security";
 import { prisma } from "../../lib/prisma";
-import { badRequest, notFound } from "../../lib/errors";
+import { badRequest, forbidden, notFound } from "../../lib/errors";
 import { audit } from "../../lib/audit";
 import { invalidate } from "../../lib/cache";
 import { storage } from "../../lib/storage";
@@ -93,6 +93,7 @@ adminRouter.patch(
     if (req.body.role && req.user!.role !== "ADMIN") throw badRequest("Only admins can change roles");
     if (req.params.id === req.user!.id) throw badRequest("You can't modify your own account here");
     const before = await prisma.user.findUniqueOrThrow({ where: { id: req.params.id } });
+    if (before.role !== "USER" && req.user!.role !== "ADMIN") throw forbidden("Only admins can modify staff accounts");
     const u = await prisma.user.update({ where: { id: req.params.id }, data: req.body, include: { subscription: true } });
     if (req.body.status && req.body.status !== "ACTIVE") {
       await revokeAllSessions(u.id);

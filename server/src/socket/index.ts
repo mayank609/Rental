@@ -12,6 +12,7 @@ import { newRedisConnection, redis } from "../lib/redis";
 import { logger } from "../lib/logger";
 import { setIo, userRoom, conversationRoom } from "./emitter";
 import { getConversationForUser, sendMessage, markRead } from "../modules/chat/chat.service";
+import { assetUrlSchema } from "../lib/assets";
 
 export function initSocket(server: HttpServer) {
   const io = new Server(server, {
@@ -49,7 +50,8 @@ export function initSocket(server: HttpServer) {
 
     socket.on("chat:send", async (p: { conversationId: string; body: string; attachments?: string[] }, ack?: (r: unknown) => void) => {
       try {
-        const message = await sendMessage(p.conversationId, user.id, p.body ?? "", p.attachments ?? []);
+        const attachments = (p.attachments ?? []).slice(0, 5).map((a) => assetUrlSchema.parse(a));
+        const message = await sendMessage(p.conversationId, user.id, String(p.body ?? ""), attachments);
         ack?.({ ok: true, message });
       } catch (err) {
         ack?.({ ok: false, error: (err as Error).message });
