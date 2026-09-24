@@ -1,0 +1,1080 @@
+// =============================================================================
+// RentNest — Prisma schema
+// PostgreSQL + PostGIS. All timestamps are stored in UTC (timestamptz).
+// All money values are stored as integers in the smallest currency unit
+// (paise for INR) to avoid floating point errors.
+// Geo columns (`location`) and full‑text columns (`searchVector`) are
+// maintained by database triggers defined in the initial migration.
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, btree_gist, pg_trgm]
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+enum Role {
+  USER // Can act as both renter and owner
+  SUPPORT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  REJECTED
+  ARCHIVED
+}
+
+enum ItemCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+}
+
+enum CancellationPolicyType {
+  FLEXIBLE
+  MODERATE
+  STRICT
+}
+
+enum BookingStatus {
+  REQUESTED // Waiting for owner response (auto-expires after 24h)
+  ACCEPTED // Owner accepted, waiting for renter payment
+  DECLINED
+  EXPIRED
+  CANCELLED
+  CONFIRMED // Paid, waiting for handover
+  ACTIVE // Item handed over
+  OVERDUE // Past end date and not returned
+  RETURNED // Returned, awaiting owner inspection
+  COMPLETED
+  DISPUTED
+}
+
+enum FulfillmentType {
+  PICKUP
+  DELIVERY
+}
+
+enum ChecklistType {
+  HANDOVER
+  RETURN
+}
+
+enum PartyRole {
+  OWNER
+  RENTER
+}
+
+enum PaymentPurpose {
+  BOOKING
+  LATE_FEE
+  DAMAGE
+  FEATURED
+  SUBSCRIPTION
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum PayoutStatus {
+  PENDING // Waiting for rental completion
+  ON_HOLD // Blocked (KYC missing / dispute)
+  SCHEDULED // Will be released at scheduledFor
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum PayoutMethod {
+  BANK
+  UPI
+}
+
+enum LedgerAccount {
+  RENTER_PAYMENT // Money received from renter
+  PLATFORM_REVENUE
+  OWNER_PAYABLE
+  DEPOSIT_HELD
+  TAX_PAYABLE
+  REFUND
+  PAYOUT
+  PENALTY
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+enum InvoiceType {
+  RENTER_RECEIPT
+  OWNER_STATEMENT
+  PLATFORM_FEE
+  PROMOTION
+  SUBSCRIPTION
+}
+
+enum ReviewRole {
+  RENTER_TO_OWNER
+  OWNER_TO_RENTER
+}
+
+enum DisputeType {
+  DAMAGE
+  NOT_RETURNED
+  NOT_AS_DESCRIBED
+  NO_SHOW
+  LATE_RETURN
+  PAYMENT
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum ReportTargetType {
+  LISTING
+  USER
+  MESSAGE
+  REVIEW
+}
+
+enum ModerationStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+enum FlagType {
+  HIGH_CANCELLATIONS
+  OFF_PLATFORM_ATTEMPT
+  SUSPICIOUS_REVIEWS
+  PROHIBITED_ITEM_ATTEMPT
+  PAYMENT_ANOMALY
+  OVERDUE_RENTAL
+}
+
+enum KycDocType {
+  AADHAAR
+  PAN
+  DRIVING_LICENSE
+  PASSPORT
+  VOTER_ID
+}
+
+enum PromotionStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+// ----------------------------------------------------------------------------
+// Users & auth
+// ----------------------------------------------------------------------------
+
+model User {
+  id                  String     @id @default(cuid())
+  email               String?    @unique
+  phone               String?    @unique // E.164 e.g. +919876543210
+  passwordHash        String?
+  googleId            String?    @unique
+  name                String
+  avatarUrl           String?
+  bio                 String?
+  role                Role       @default(USER)
+  status              UserStatus @default(ACTIVE)
+  statusReason        String?
+  phoneVerifiedAt     DateTime?
+  emailVerifiedAt     DateTime?
+  kycStatus           KycStatus  @default(NONE)
+  // Cached rating aggregates (updated when reviews are created)
+  ownerRatingAvg      Float      @default(0)
+  ownerRatingCount    Int        @default(0)
+  renterRatingAvg     Float      @default(0)
+  renterRatingCount   Int        @default(0)
+  // Preferred location (remembered city/locality)
+  preferredCitySlug   String?
+  preferredLocality   String?
+  preferredLat        Float?
+  preferredLng        Float?
+  // Trust & safety counters
+  cancellationCount   Int        @default(0)
+  offPlatformAttempts Int        @default(0)
+  // Preferences & privacy (DPDP consent)
+  notificationPrefs   Json       @default("{}")
+  consentAt           DateTime?
+  marketingOptIn      Boolean    @default(false)
+  lastLoginAt         DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  deletedAt           DateTime?
+
+  refreshTokens     RefreshToken[]
+  addresses         Address[]
+  listings          Listing[]          @relation("OwnerListings")
+  rentals           Booking[]          @relation("RenterBookings")
+  ownedBookings     Booking[]          @relation("OwnerBookings")
+  payments          Payment[]
+  payouts           Payout[]
+  payoutAccount     PayoutAccount?
+  reviewsWritten    Review[]           @relation("ReviewAuthor")
+  reviewsReceived   Review[]           @relation("ReviewSubject")
+  wishlist          WishlistItem[]
+  recentlyViewed    RecentlyViewed[]
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
+  convAsRenter      Conversation[]     @relation("ConvRenter")
+  convAsOwner       Conversation[]     @relation("ConvOwner")
+  messages          Message[]
+  disputesRaised    Dispute[]          @relation("DisputeRaisedBy")
+  disputesAgainst   Dispute[]          @relation("DisputeAgainst")
+  reportsMade       Report[]           @relation("ReportReporter")
+  flags             Flag[]
+  kycDocuments      KycDocument[]
+  blocking          UserBlock[]        @relation("Blocker")
+  blockedBy         UserBlock[]        @relation("Blocked")
+  auditLogs         AuditLog[]
+  subscription      Subscription?
+  promotions        Promotion[]
+  invoices          Invoice[]
+  checklists        Checklist[]
+  bookingEvents     BookingEvent[]
+  disputeEvidence   DisputeEvidence[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  family       String // Rotation family; reuse of a revoked token revokes the whole family
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  userAgent    String?
+  ip           String?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String?
+  line1     String
+  line2     String?
+  locality  String
+  city      String
+  state     String?
+  pincode   String?
+  country   String   @default("IN")
+  lat       Float
+  lng       Float
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings Listing[]
+
+  @@index([userId])
+}
+
+model UserBlock {
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+}
+
+model KycDocument {
+  id              String     @id @default(cuid())
+  userId          String
+  docType         KycDocType
+  docNumberMasked String // Only last 4 characters are stored in clear
+  fileKey         String // Private storage key (never public)
+  status          KycStatus  @default(PENDING)
+  rejectionReason String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+// ----------------------------------------------------------------------------
+// Location
+// ----------------------------------------------------------------------------
+
+/// Cities are created dynamically when the first listing appears there.
+model City {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  state        String?
+  country      String   @default("IN")
+  lat          Float
+  lng          Float
+  listingCount Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  localities Locality[]
+  listings   Listing[]
+  searchLogs SearchLog[]
+
+  @@index([listingCount])
+}
+
+model Locality {
+  id           String   @id @default(cuid())
+  cityId       String
+  name         String
+  slug         String
+  pincode      String?
+  lat          Float
+  lng          Float
+  listingCount Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  city     City      @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  listings Listing[]
+
+  @@unique([cityId, slug])
+}
+
+model SearchLog {
+  id           String   @id @default(cuid())
+  cityId       String?
+  userId       String?
+  query        String?
+  categorySlug String?
+  lat          Float?
+  lng          Float?
+  resultCount  Int
+  createdAt    DateTime @default(now())
+
+  city City? @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  @@index([cityId, createdAt])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// Catalog
+// ----------------------------------------------------------------------------
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  parentId    String?
+  icon        String?
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryTree")
+  listings    Listing[]  @relation("ListingCategory")
+  subListings Listing[]  @relation("ListingSubcategory")
+
+  @@index([parentId])
+}
+
+model Listing {
+  id                 String                                 @id @default(cuid())
+  ownerId            String
+  title              String
+  slug               String
+  description        String
+  categoryId         String
+  subcategoryId      String?
+  condition          ItemCondition                          @default(GOOD)
+  status             ListingStatus                          @default(DRAFT)
+  rejectionReason    String?
+  // Pricing (paise). At least priceDaily or priceHourly must be set.
+  priceHourly        Int?
+  priceDaily         Int?
+  priceWeekly        Int?
+  priceMonthly       Int?
+  securityDeposit    Int                                    @default(0)
+  minRentalHours     Int                                    @default(24)
+  maxRentalHours     Int?
+  instantBooking     Boolean                                @default(false)
+  pickupAvailable    Boolean                                @default(true)
+  deliveryAvailable  Boolean                                @default(false)
+  deliveryFee        Int?
+  deliveryRadiusKm   Int?
+  rules              String?
+  cancellationPolicy CancellationPolicyType                 @default(MODERATE)
+  quantity           Int                                    @default(1)
+  // Location — exact coordinates are PRIVATE; approx ones are public.
+  addressId          String?
+  lat                Float
+  lng                Float
+  approxLat          Float
+  approxLng          Float
+  cityId             String
+  localityId         String?
+  pincode            String?
+  location           Unsupported("geography(Point, 4326)")?
+  searchVector       Unsupported("tsvector")?
+  // Merchandising / trust
+  featuredUntil      DateTime?
+  isVerified         Boolean                                @default(false)
+  viewCount          Int                                    @default(0)
+  bookingCount       Int                                    @default(0)
+  ratingAvg          Float                                  @default(0)
+  ratingCount        Int                                    @default(0)
+  version            Int                                    @default(1)
+  publishedAt        DateTime?
+  createdAt          DateTime                               @default(now())
+  updatedAt          DateTime                               @updatedAt
+  deletedAt          DateTime?
+
+  owner          User                @relation("OwnerListings", fields: [ownerId], references: [id])
+  category       Category            @relation("ListingCategory", fields: [categoryId], references: [id])
+  subcategory    Category?           @relation("ListingSubcategory", fields: [subcategoryId], references: [id])
+  address        Address?            @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  city           City                @relation(fields: [cityId], references: [id])
+  locality       Locality?           @relation(fields: [localityId], references: [id])
+  images         ListingImage[]
+  blocks         AvailabilityBlock[]
+  bookings       Booking[]
+  reviews        Review[]
+  wishlistedBy   WishlistItem[]
+  recentlyViewed RecentlyViewed[]
+  conversations  Conversation[]
+  promotions     Promotion[]
+  flags          Flag[]
+
+  @@index([ownerId])
+  @@index([cityId, status])
+  @@index([categoryId, status])
+  @@index([status, featuredUntil])
+  @@index([location], type: Gist)
+  @@index([searchVector], type: Gin)
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model ListingImage {
+  id         String   @id @default(cuid())
+  listingId  String?
+  uploaderId String
+  key        String
+  url        String
+  mediumUrl  String
+  thumbUrl   String
+  width      Int?
+  height     Int?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+}
+
+/// Owner-defined unavailable periods (maintenance, personal use…).
+model AvailabilityBlock {
+  id        String   @id @default(cuid())
+  listingId String
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, startAt, endAt])
+}
+
+// ----------------------------------------------------------------------------
+// Bookings
+// ----------------------------------------------------------------------------
+
+model Booking {
+  id                  String                 @id @default(cuid())
+  code                String                 @unique // Human readable e.g. RN-7K3P9Q
+  listingId           String
+  renterId            String
+  ownerId             String
+  startAt             DateTime
+  endAt               DateTime
+  status              BookingStatus          @default(REQUESTED)
+  fulfillment         FulfillmentType        @default(PICKUP)
+  deliveryAddress     Json?
+  instantBook         Boolean                @default(false)
+  protectionPlan      Boolean                @default(false)
+  cancellationPolicy  CancellationPolicyType
+  message             String?
+  // Price snapshot (paise) — immutable after creation
+  pricingUnit         String
+  pricingUnits        Int
+  rentAmount          Int
+  serviceFee          Int
+  protectionFee       Int                    @default(0)
+  deliveryFee         Int                    @default(0)
+  taxAmount           Int                    @default(0) // GST charged to renter on platform fees
+  depositAmount       Int                    @default(0)
+  totalAmount         Int // Total charged to renter
+  ownerCommission     Int
+  ownerCommissionTax  Int                    @default(0)
+  ownerPayoutAmount   Int
+  platformRevenue     Int
+  priceBreakdown      Json
+  // Legal
+  agreementVersion    String
+  agreementAcceptedAt DateTime
+  agreementIp         String?
+  // Lifecycle timestamps
+  expiresAt           DateTime? // Request/payment window
+  acceptedAt          DateTime?
+  declinedAt          DateTime?
+  declineReason       String?
+  confirmedAt         DateTime?
+  handedOverAt        DateTime?
+  returnedAt          DateTime?
+  inspectionDeadline  DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  cancelledById       String?
+  cancellationReason  String?
+  refundAmount        Int                    @default(0)
+  ownerPenaltyAmount  Int                    @default(0)
+  // Late return
+  lateDays            Int                    @default(0)
+  lateFeeAmount       Int                    @default(0)
+  depositDeduction    Int                    @default(0)
+  depositReleasedAt   DateTime?
+  remindersSent       Json                   @default("[]")
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  listing      Listing        @relation(fields: [listingId], references: [id])
+  renter       User           @relation("RenterBookings", fields: [renterId], references: [id])
+  owner        User           @relation("OwnerBookings", fields: [ownerId], references: [id])
+  events       BookingEvent[]
+  checklists   Checklist[]
+  payments     Payment[]
+  payouts      Payout[]
+  reviews      Review[]
+  disputes     Dispute[]
+  invoices     Invoice[]
+  conversation Conversation?
+  ledger       LedgerEntry[]
+
+  @@index([listingId, startAt, endAt])
+  @@index([renterId, status])
+  @@index([ownerId, status])
+  @@index([status, expiresAt])
+  @@index([status, endAt])
+}
+
+model BookingEvent {
+  id         String         @id @default(cuid())
+  bookingId  String
+  actorId    String?
+  type       String
+  fromStatus BookingStatus?
+  toStatus   BookingStatus?
+  data       Json?
+  createdAt  DateTime       @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  @@index([bookingId, createdAt])
+}
+
+/// Handover / return checklist submitted by each party with timestamped photos.
+model Checklist {
+  id            String         @id @default(cuid())
+  bookingId     String
+  type          ChecklistType
+  role          PartyRole
+  submittedById String
+  condition     ItemCondition?
+  notes         String?
+  items         Json           @default("[]") // [{label, ok}]
+  photos        Json           @default("[]") // [{url, takenAt, lat?, lng?}]
+  createdAt     DateTime       @default(now())
+
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  submittedBy User    @relation(fields: [submittedById], references: [id])
+
+  @@unique([bookingId, type, role])
+}
+
+// ----------------------------------------------------------------------------
+// Payments, payouts, ledger, invoices
+// ----------------------------------------------------------------------------
+
+model Payment {
+  id                String         @id @default(cuid())
+  userId            String
+  bookingId         String?
+  purpose           PaymentPurpose
+  provider          String // razorpay | mock
+  providerOrderId   String         @unique
+  providerPaymentId String?        @unique
+  amount            Int
+  currency          String         @default("INR")
+  status            PaymentStatus  @default(CREATED)
+  method            String?
+  failureReason     String?
+  idempotencyKey    String         @unique
+  refundedAmount    Int            @default(0)
+  capturedAt        DateTime?
+  metadata          Json           @default("{}")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  booking  Booking?      @relation(fields: [bookingId], references: [id])
+  refunds  Refund[]
+  invoices Invoice[]
+  ledger   LedgerEntry[]
+
+  @@index([status, createdAt])
+  @@index([bookingId])
+}
+
+model Refund {
+  id               String       @id @default(cuid())
+  paymentId        String
+  amount           Int
+  reason           String
+  status           RefundStatus @default(PENDING)
+  providerRefundId String?      @unique
+  idempotencyKey   String       @unique
+  initiatedById    String?
+  failureReason    String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([status])
+}
+
+model PayoutAccount {
+  id                 String       @id @default(cuid())
+  userId             String       @unique
+  method             PayoutMethod
+  accountHolderName  String
+  accountNumberEnc   String? // AES-256-GCM encrypted
+  accountNumberLast4 String?
+  ifsc               String?
+  upiId              String?
+  panLast4           String?
+  providerAccountId  String? // e.g. Razorpay Route linked account id
+  status             KycStatus    @default(PENDING)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id                 String       @id @default(cuid())
+  ownerId            String
+  bookingId          String?
+  amount             Int
+  status             PayoutStatus @default(PENDING)
+  scheduledFor       DateTime?
+  providerTransferId String?
+  failureReason      String?
+  attempts           Int          @default(0)
+  note               String?
+  paidAt             DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  owner   User     @relation(fields: [ownerId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([status, scheduledFor])
+  @@index([ownerId])
+}
+
+/// Append-only money ledger used for reconciliation reports.
+model LedgerEntry {
+  id          String        @id @default(cuid())
+  bookingId   String?
+  paymentId   String?
+  account     LedgerAccount
+  amount      Int // Positive = credit to account, negative = debit
+  description String
+  createdAt   DateTime      @default(now())
+
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([account, createdAt])
+  @@index([bookingId])
+}
+
+model WebhookEvent {
+  id          String        @id @default(cuid())
+  provider    String
+  eventId     String
+  type        String
+  payload     Json
+  status      WebhookStatus @default(RECEIVED)
+  attempts    Int           @default(0)
+  error       String?
+  processedAt DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@unique([provider, eventId])
+  @@index([status])
+}
+
+model Invoice {
+  id        String      @id @default(cuid())
+  number    String      @unique
+  type      InvoiceType
+  userId    String
+  bookingId String?
+  paymentId String?
+  amount    Int
+  taxAmount Int         @default(0)
+  data      Json
+  fileKey   String?
+  createdAt DateTime    @default(now())
+
+  user    User     @relation(fields: [userId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([userId])
+}
+
+/// Atomic, gap-free invoice numbering per financial year.
+model InvoiceSequence {
+  fy   String @id
+  last Int    @default(0)
+}
+
+// ----------------------------------------------------------------------------
+// Monetization extras
+// ----------------------------------------------------------------------------
+
+model Promotion {
+  id        String          @id @default(cuid())
+  listingId String
+  userId    String
+  planCode  String
+  amount    Int
+  status    PromotionStatus @default(PENDING_PAYMENT)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  paymentId String?
+  createdAt DateTime        @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([status, endsAt])
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  userId           String             @unique
+  plan             String             @default("PRO")
+  status           SubscriptionStatus @default(PENDING_PAYMENT)
+  currentPeriodEnd DateTime?
+  paymentId        String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------------------------------
+// Engagement
+// ----------------------------------------------------------------------------
+
+model WishlistItem {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+}
+
+model RecentlyViewed {
+  userId    String
+  listingId String
+  viewedAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([userId, viewedAt])
+}
+
+model Review {
+  id        String     @id @default(cuid())
+  bookingId String
+  listingId String?
+  authorId  String
+  subjectId String
+  role      ReviewRole
+  rating    Int
+  comment   String?
+  isHidden  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+
+  booking Booking  @relation(fields: [bookingId], references: [id])
+  listing Listing? @relation(fields: [listingId], references: [id])
+  author  User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  subject User     @relation("ReviewSubject", fields: [subjectId], references: [id])
+
+  @@unique([bookingId, authorId])
+  @@index([subjectId])
+  @@index([listingId])
+}
+
+// ----------------------------------------------------------------------------
+// Messaging & notifications
+// ----------------------------------------------------------------------------
+
+model Conversation {
+  id            String   @id @default(cuid())
+  listingId     String?
+  bookingId     String?  @unique
+  renterId      String
+  ownerId       String
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  listing  Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  booking  Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  renter   User      @relation("ConvRenter", fields: [renterId], references: [id])
+  owner    User      @relation("ConvOwner", fields: [ownerId], references: [id])
+  messages Message[]
+
+  @@unique([listingId, renterId])
+  @@index([renterId, lastMessageAt])
+  @@index([ownerId, lastMessageAt])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  wasMasked      Boolean   @default(false)
+  attachments    Json      @default("[]")
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  data      Json      @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------------------------------
+// Trust & safety
+// ----------------------------------------------------------------------------
+
+model Dispute {
+  id               String        @id @default(cuid())
+  bookingId        String
+  raisedById       String
+  againstId        String
+  type             DisputeType
+  description      String
+  claimAmount      Int           @default(0)
+  status           DisputeStatus @default(OPEN)
+  resolution       String?
+  depositDeduction Int           @default(0)
+  refundAmount     Int           @default(0)
+  resolvedById     String?
+  resolvedAt       DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  booking  Booking           @relation(fields: [bookingId], references: [id])
+  raisedBy User              @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
+  against  User              @relation("DisputeAgainst", fields: [againstId], references: [id])
+  evidence DisputeEvidence[]
+
+  @@index([status])
+  @@index([bookingId])
+}
+
+model DisputeEvidence {
+  id           String   @id @default(cuid())
+  disputeId    String
+  uploadedById String
+  url          String?
+  note         String?
+  createdAt    DateTime @default(now())
+
+  dispute    Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id])
+}
+
+model Report {
+  id          String           @id @default(cuid())
+  reporterId  String
+  targetType  ReportTargetType
+  targetId    String
+  reason      String
+  details     String?
+  status      ModerationStatus @default(OPEN)
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime         @default(now())
+
+  reporter User @relation("ReportReporter", fields: [reporterId], references: [id])
+
+  @@index([status])
+  @@index([targetType, targetId])
+}
+
+/// Automatically raised suspicious-behaviour flags.
+model Flag {
+  id        String           @id @default(cuid())
+  userId    String?
+  listingId String?
+  type      FlagType
+  severity  Int              @default(1) // 1 low … 3 high
+  details   Json             @default("{}")
+  status    ModerationStatus @default(OPEN)
+  createdAt DateTime         @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([status, type])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+/// Admin-configurable platform settings (fees, policies, prohibited items…).
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
