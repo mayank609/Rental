@@ -6,7 +6,7 @@ import { Router } from "express";
 import { z } from "zod";
 import multer from "multer";
 import { optionalAuth, requireAuth } from "../../middleware/auth";
-import { validate } from "../../middleware/validate";
+import { validate, queryBool } from "../../middleware/validate";
 import { clientIp } from "../../middleware/security";
 import { uploadLimiter } from "../../middleware/rateLimit";
 import { prisma } from "../../lib/prisma";
@@ -179,7 +179,7 @@ usersRouter.delete("/me/addresses/:id", requireAuth, async (req, res) => {
 });
 
 // -------------------------------------------------------- notifications --
-usersRouter.get("/me/notifications", requireAuth, validate({ query: z.object({ page: z.coerce.number().optional(), unread: z.coerce.boolean().optional() }) }), async (req, res) => {
+usersRouter.get("/me/notifications", requireAuth, validate({ query: z.object({ page: z.coerce.number().optional(), unread: queryBool.optional() }) }), async (req, res) => {
   const q = req.query as { page?: number; unread?: boolean };
   const { skip, take, page, limit } = paginate(q.page, 30);
   const where = { userId: req.user!.id, ...(q.unread ? { readAt: null } : {}) };

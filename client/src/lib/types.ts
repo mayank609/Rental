@@ -257,6 +257,8 @@ export interface PlatformConfig {
   supportEmail: string;
   companyName: string;
   fees: {
+    ownerCancellationPenaltyRate: number;
+    ownerCancellationPenaltyMin: number;
     renterServiceFeeRate: number;
     ownerCommissionRate: number;
     proOwnerCommissionRate: number;

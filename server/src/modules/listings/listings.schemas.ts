@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { queryBool } from "../../middleware/validate";
 
 const money = z.coerce.number().int().min(0).max(100_000_000); // paise, up to ₹10 lakh
 const optMoney = money.nullable().optional();
@@ -78,9 +79,9 @@ export const searchSchema = z.object({
   startAt: z.coerce.date().optional(),
   endAt: z.coerce.date().optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
-  delivery: z.coerce.boolean().optional(),
-  instant: z.coerce.boolean().optional(),
-  verified: z.coerce.boolean().optional(),
+  delivery: queryBool.optional(),
+  instant: queryBool.optional(),
+  verified: queryBool.optional(),
   ownerId: z.string().optional(),
   bbox: z
     .string()
@@ -100,6 +101,6 @@ export const blockSchema = z
 export const quoteSchema = z.object({
   startAt: z.coerce.date(),
   endAt: z.coerce.date(),
-  protectionPlan: z.coerce.boolean().default(false),
+  protectionPlan: queryBool.default(false),
   fulfillment: z.enum(["PICKUP", "DELIVERY"]).default("PICKUP"),
 });

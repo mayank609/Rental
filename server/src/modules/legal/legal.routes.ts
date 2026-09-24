@@ -47,7 +47,7 @@ legalRouter.get("/config", async (_req, res) => {
     timezone: env.DEFAULT_TIMEZONE,
     supportEmail: env.SUPPORT_EMAIL,
     companyName: env.COMPANY_LEGAL_NAME,
-    fees: { renterServiceFeeRate: s.fees.renterServiceFeeRate, ownerCommissionRate: s.fees.ownerCommissionRate, proOwnerCommissionRate: s.fees.proOwnerCommissionRate, gstRate: s.fees.gstRate, protectionPlan: s.fees.protectionPlan, lateFee: s.fees.lateFee },
+    fees: { ownerCancellationPenaltyRate: s.fees.ownerCancellationPenaltyRate, ownerCancellationPenaltyMin: s.fees.ownerCancellationPenaltyMin, renterServiceFeeRate: s.fees.renterServiceFeeRate, ownerCommissionRate: s.fees.ownerCommissionRate, proOwnerCommissionRate: s.fees.proOwnerCommissionRate, gstRate: s.fees.gstRate, protectionPlan: s.fees.protectionPlan, lateFee: s.fees.lateFee },
     cancellationPolicies: s.cancellationPolicies,
     booking: { requestExpiryHours: s.booking.requestExpiryHours, inspectionWindowHours: s.booking.inspectionWindowHours, minLeadTimeHours: s.booking.minLeadTimeHours, maxAdvanceDays: s.booking.maxAdvanceDays },
     kycRequiredAboveAmount: s.trust.kycRequiredAboveAmount,

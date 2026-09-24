@@ -52,3 +52,13 @@ describe("misc utils", () => {
     expect(financialYear(new Date("2026-04-01T10:00:00Z"))).toBe("2026-27");
   });
 });
+
+describe("queryBool", async () => {
+  const { queryBool } = await import("../../src/middleware/validate");
+  it("parses query-string booleans correctly", () => {
+    expect(queryBool.parse("false")).toBe(false);
+    expect(queryBool.parse("0")).toBe(false);
+    expect(queryBool.parse("true")).toBe(true);
+    expect(queryBool.parse("1")).toBe(true);
+  });
+});

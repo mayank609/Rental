@@ -71,7 +71,7 @@ export default function RefundPolicyPage() {
         <>
           <ul>
             <li>The renter receives a <strong>100% refund</strong> of everything paid, including all fees.</li>
-            <li>The owner is charged a <strong>cancellation penalty</strong> (a percentage of the rent, subject to a minimum — currently 10% of rent, minimum ₹200), deducted from future payouts.</li>
+            <li>The owner is charged a <strong>cancellation penalty</strong> (a percentage of the rent, subject to a minimum{cfg ? <> — currently {Math.round(cfg.fees.ownerCancellationPenaltyRate * 100)}% of rent, minimum {money(cfg.fees.ownerCancellationPenaltyMin)}</> : null}), deducted from future payouts.</li>
             <li>Repeated cancellations can lower search ranking or lead to suspension.</li>
           </ul>
           <p>If a booking request isn't accepted within {expiry} hours it expires automatically and nothing is charged.</p>

@@ -1,6 +1,6 @@
 /** Zod request validation. Parsed values replace the raw input. */
 import type { NextFunction, Request, Response } from "express";
-import { ZodSchema } from "zod";
+import { z, ZodSchema } from "zod";
 
 type Schemas = { body?: ZodSchema; query?: ZodSchema; params?: ZodSchema };
 
@@ -18,3 +18,10 @@ export const validate = (schemas: Schemas) => (req: Request, _res: Response, nex
     next(err);
   }
 };
+
+/** Query-string boolean: "true"/"1"/"yes"/"on" → true, "false"/"0"/"no"/"off"/"" → false. */
+export const queryBool = z.preprocess((v) => {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return ["true", "1", "yes", "on"].includes(v.toLowerCase());
+  return v;
+}, z.boolean());

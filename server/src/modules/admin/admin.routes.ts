@@ -7,7 +7,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { Prisma as P } from "@prisma/client";
 import { requireAuth, requireRole } from "../../middleware/auth";
-import { validate } from "../../middleware/validate";
+import { validate, queryBool } from "../../middleware/validate";
 import { clientIp } from "../../middleware/security";
 import { prisma } from "../../lib/prisma";
 import { badRequest, forbidden, notFound } from "../../lib/errors";
@@ -51,7 +51,7 @@ adminRouter.get("/analytics/heatmap", validate({ query: z.object({ city: z.strin
 });
 
 // -------------------------------------------------------------------- users
-adminRouter.get("/users", validate({ query: pageQ.extend({ role: z.string().optional(), kyc: z.string().optional(), flagged: z.coerce.boolean().optional() }) }), async (req, res) => {
+adminRouter.get("/users", validate({ query: pageQ.extend({ role: z.string().optional(), kyc: z.string().optional(), flagged: queryBool.optional() }) }), async (req, res) => {
   const q = req.query as unknown as PageQ & { role?: string; kyc?: string; flagged?: boolean };
   const where: P.UserWhereInput = {
     ...(q.q ? { OR: [{ name: { contains: q.q, mode: "insensitive" } }, { email: { contains: q.q, mode: "insensitive" } }, { phone: { contains: q.q } }, { id: q.q }] } : {}),
