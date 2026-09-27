@@ -2,14 +2,14 @@
   "name": "rentnest",
   "private": true,
   "version": "1.0.0",
-  "description": "RentNest — peer-to-peer rental marketplace (monorepo)",
+  "description": "RentNest \u2014 peer-to-peer rental marketplace (monorepo)",
   "workspaces": [
     "server",
     "client"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
-    "build": "npm run build -w server && npm run build -w client",
+    "dev": "node api.js && npm run dev --workspaces --if-present",
+    "build": "node api.js && npm run build -w server && npm run build -w client",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
