@@ -1,0 +1,39 @@
+/* RentNest marketing — shared visual system (video + interactive).
+   Brand: RentNest indigo from the app, with marigold for money moments and
+   mint for trust. Type: Inter (the app's face), heavy weights for display. */
+:root {
+  --ink: #13123a;
+  --ink-2: #1e1c56;
+  --indigo: #4f46e5;
+  --indigo-2: #6d63ff;
+  --lav: #c7d2fe;
+  --paper: #f6f5ff;
+  --marigold: #ffb020;
+  --mint: #19c28b;
+  --white: #ffffff;
+  --muted-ink: #5b5a86;
+  --font: "Inter", "Inter Display", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.rn-logo { display: inline-flex; align-items: center; gap: calc(var(--u) * 1.6); font-weight: 800; letter-spacing: -0.02em; }
+.rn-logo svg { width: calc(var(--u) * 6); height: calc(var(--u) * 6); flex: none; }
+
+/* Phone mockup showing a real app screenshot that can scroll */
+.phone {
+  position: relative;
+  aspect-ratio: 390 / 844;
+  border-radius: 13% / 6%;
+  background: #0b0a24;
+  padding: 2.6%;
+  box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 8) rgba(10, 8, 40, 0.45), inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+.phone .screen { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 11% / 5.2%; background: #fff; }
+.phone .screen img { position: absolute; left: 0; top: 0; width: 100%; height: auto; display: block; will-change: transform; }
+.phone .notch { position: absolute; top: 3.4%; left: 50%; width: 30%; height: 3%; transform: translateX(-50%); background: #0b0a24; border-radius: 999px; z-index: 2; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: calc(var(--u) * 1.2);
+  border-radius: 999px; padding: calc(var(--u) * 1.3) calc(var(--u) * 2.6);
+  font-weight: 700; white-space: nowrap;
+}
+.tick { flex: none; display: inline-grid; place-items: center; border-radius: 50%; background: var(--mint); color: #fff; }

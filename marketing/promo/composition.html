@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8" />
+<title>RentNest Promo Composition</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Video composition: every frame is a pure function of time (window.seek). */
+  html, body { margin: 0; background: #000; }
+  #stage { position: relative; overflow: hidden; font-family: var(--font); color: var(--white); -webkit-font-smoothing: antialiased; }
+  .scene { position: absolute; inset: 0; visibility: hidden; }
+  .scene.dark { background: radial-gradient(120% 80% at 80% 0%, #2a2380 0%, var(--ink) 55%); }
+  .scene.indigo { background: radial-gradient(120% 90% at 10% 100%, #7b72ff 0%, var(--indigo) 45%, #3b33c9 100%); }
+  .scene.paper { background: var(--paper); color: var(--ink); }
+  .copy { position: absolute; z-index: 2; }
+  .visual { position: absolute; z-index: 1; }
+
+  /* Layouts per aspect ratio */
+  .portrait .copy { left: 7%; right: 7%; top: 13%; }
+  .portrait .visual { left: 0; right: 0; top: 43%; bottom: 0; }
+  .square .copy { left: 7%; right: 7%; top: 8%; }
+  .square .visual { left: 0; right: 0; top: 40%; bottom: 0; }
+  .landscape .copy { left: 6.5%; width: 44%; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+  .landscape .visual { left: 50%; right: 0; top: 0; bottom: 0; }
+
+  .display { font-weight: 900; letter-spacing: -0.045em; line-height: 0.98; font-size: var(--display); margin: 0; text-wrap: balance; }
+  .sub { font-weight: 600; font-size: var(--sub); line-height: 1.25; margin: calc(var(--u) * 2.2) 0 0; letter-spacing: -0.01em; }
+  .eyebrow { font-weight: 800; font-size: calc(var(--u) * 2.4); letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; margin-bottom: calc(var(--u) * 2); }
+  .portrait { --display: calc(var(--u) * 10.6); --sub: calc(var(--u) * 4.3); }
+  .square { --display: calc(var(--u) * 8.6); --sub: calc(var(--u) * 3.6); }
+  .landscape { --display: calc(var(--u) * 9.8); --sub: calc(var(--u) * 4); }
+  .landscape #s7 .name { font-size: calc(var(--u) * 15); } .landscape #s7 .tag { font-size: calc(var(--u) * 5.4); } .landscape #s7 .mark svg { width: calc(var(--u) * 24); height: calc(var(--u) * 24); }
+
+  .line { display: block; overflow: hidden; padding-bottom: 0.08em; }
+  .line > span { display: inline-block; will-change: transform; }
+  .hl { color: var(--marigold); position: relative; }
+  .hl::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0.02em; height: 0.08em; background: var(--marigold); transform-origin: left; transform: scaleX(var(--draw, 0)); border-radius: 99px; }
+
+  .bug { position: absolute; z-index: 5; left: 7%; top: 6.5%; font-size: calc(var(--u) * 3.2); }
+  .landscape .bug { left: 6.5%; top: 8%; }
+  .square .bug { display: none; }
+
+  /* S1 camera */
+  .cam { position: absolute; left: 50%; top: 42%; width: calc(var(--u) * 52); transform: translate(-50%, -50%); color: var(--marigold); }
+  .landscape .cam { width: calc(var(--u) * 46); }
+  .square .cam { top: 50%; width: calc(var(--u) * 38); }
+  .cam svg { width: 100%; height: auto; overflow: visible; }
+  .pricetag { position: absolute; right: -6%; top: 6%; background: var(--white); color: var(--ink); font-weight: 900; font-size: calc(var(--u) * 4.2); padding: calc(var(--u) * 1.2) calc(var(--u) * 2.4); border-radius: calc(var(--u) * 1.4); box-shadow: 0 calc(var(--u)) calc(var(--u) * 4) rgba(0,0,0,.35); }
+  .dust { position: absolute; left: 4%; bottom: -3%; font-weight: 700; font-size: calc(var(--u) * 3); color: var(--lav); white-space: nowrap; }
+
+  /* S2 counter */
+  .counter { font-weight: 900; letter-spacing: -0.05em; font-size: calc(var(--display) * 1.12); color: var(--marigold); line-height: 1; margin-top: calc(var(--u) * 2.5); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .counter small { font-size: 0.34em; color: var(--white); letter-spacing: -0.01em; margin-left: 0.2em; }
+  .fine { font-size: calc(var(--u) * 2.6); color: var(--lav); font-weight: 600; margin-top: calc(var(--u) * 1.6); }
+
+  /* Phone placement */
+  .phone-slot { position: absolute; left: 50%; top: 0; width: calc(var(--u) * 54); transform: translateX(-50%); }
+  .square .phone-slot { width: calc(var(--u) * 40); }
+  .landscape .phone-slot { top: 7%; width: calc(var(--u) * 39); }
+
+  /* S3 radar + chips */
+  .radar { position: absolute; left: 50%; top: 42%; width: 0; height: 0; }
+  .landscape .radar { top: 50%; }
+  .ring { position: absolute; left: 0; top: 0; border: calc(var(--u) * 0.4) solid var(--indigo); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0; }
+  .float-chip { position: absolute; z-index: 3; background: var(--white); color: var(--ink); box-shadow: 0 calc(var(--u) * 1.4) calc(var(--u) * 4) rgba(30, 28, 86, 0.22); font-size: calc(var(--u) * 3.1); }
+  .float-chip .pin { color: var(--indigo); font-size: 1.1em; display: inline-flex; }
+  .float-chip b { color: var(--indigo); }
+
+  /* S4 chips grid */
+  .grid { position: absolute; inset: 2% 7% 16%; display: grid; grid-template-columns: repeat(2, 1fr); gap: calc(var(--u) * 2.2); align-content: start; }
+  .landscape .grid { inset: 14% 7% 14% 2%; grid-template-columns: repeat(2, 1fr); align-content: center; }
+  .square .grid { inset: 2% 7% 6%; grid-template-columns: repeat(4, 1fr); gap: calc(var(--u) * 1.6); }
+  .cat { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: calc(var(--u) * 2.4); padding: calc(var(--u) * 2.4) calc(var(--u) * 2.6); will-change: transform; }
+  .cat .n { font-weight: 800; font-size: calc(var(--u) * 3.6); letter-spacing: -0.02em; line-height: 1.1; }
+  .cat .p { font-weight: 700; font-size: calc(var(--u) * 2.9); color: var(--marigold); margin-top: calc(var(--u) * 0.8); }
+  .square .cat { padding: calc(var(--u) * 1.8); }
+  .square .cat .n { font-size: calc(var(--u) * 2.9); }
+  .square .cat .p { font-size: calc(var(--u) * 2.4); }
+
+  /* S5 trust list */
+  .trust { list-style: none; padding: 0; margin: calc(var(--u) * 3.5) 0 0; display: grid; gap: calc(var(--u) * 2.2); }
+  .trust li { display: flex; align-items: center; gap: calc(var(--u) * 2); font-weight: 700; font-size: calc(var(--u) * 3.6); letter-spacing: -0.015em; }
+  .square .trust { margin-top: calc(var(--u) * 2); gap: calc(var(--u) * 1.4); }
+  .square .trust li { font-size: calc(var(--u) * 3); }
+  .trust .tick { width: calc(var(--u) * 5.2); height: calc(var(--u) * 5.2); }
+  .check-path { stroke-dasharray: 1; stroke-dashoffset: var(--dash, 1); }
+  .portrait #s5 .visual { top: 56%; }
+
+  /* S6 steps */
+  .steps { position: absolute; inset: 0 7% 16%; display: grid; gap: calc(var(--u) * 3.2); align-content: start; }
+  .portrait .step .t { font-size: calc(var(--u) * 5); } .portrait .step .d { font-size: calc(var(--u) * 3.2); } .portrait .step { padding: calc(var(--u) * 4) calc(var(--u) * 3.8); }
+  .landscape .steps { inset: 16% 8% 16% 2%; align-content: center; }
+  .square .steps { inset: 2% 7% 8%; gap: calc(var(--u) * 1.6); }
+  .step { display: flex; align-items: center; gap: calc(var(--u) * 3); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: calc(var(--u) * 3); padding: calc(var(--u) * 3) calc(var(--u) * 3.4); }
+  .square .step { padding: calc(var(--u) * 2) calc(var(--u) * 2.6); }
+  .step .num { flex: none; width: calc(var(--u) * 9); height: calc(var(--u) * 9); border-radius: 50%; background: var(--white); color: var(--indigo); display: grid; place-items: center; font-weight: 900; font-size: calc(var(--u) * 4.6); }
+  .square .step .num { width: calc(var(--u) * 7); height: calc(var(--u) * 7); font-size: calc(var(--u) * 3.6); }
+  .step .t { font-weight: 800; font-size: calc(var(--u) * 4.2); letter-spacing: -0.02em; line-height: 1.1; }
+  .step .d { font-weight: 600; font-size: calc(var(--u) * 2.8); color: var(--lav); margin-top: calc(var(--u) * 0.6); }
+  .square .step .t { font-size: calc(var(--u) * 3.4); }
+  .square .step .d { font-size: calc(var(--u) * 2.4); }
+
+  /* S7 end card */
+  #s7 .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 7%; }
+  #s7 .mark svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); filter: drop-shadow(0 calc(var(--u) * 2) calc(var(--u) * 5) rgba(0,0,0,.35)); }
+  #s7 .name { font-weight: 900; letter-spacing: -0.05em; font-size: calc(var(--u) * 12); margin-top: calc(var(--u) * 3); line-height: 1; }
+  #s7 .tag { font-weight: 700; font-size: calc(var(--u) * 4.6); margin-top: calc(var(--u) * 2.4); color: var(--lav); letter-spacing: -0.02em; text-wrap: balance; }
+  #s7 .tag b { color: var(--white); }
+  #s7 .cta { margin-top: calc(var(--u) * 5); background: var(--marigold); color: var(--ink); font-size: calc(var(--u) * 4.4); padding: calc(var(--u) * 2.2) calc(var(--u) * 5); box-shadow: 0 calc(var(--u)) calc(var(--u) * 5) rgba(255,176,32,.35); }
+  #s7 .free { margin-top: calc(var(--u) * 2.4); font-weight: 600; font-size: calc(var(--u) * 3); color: var(--lav); }
+  #s7 .cities { position: absolute; left: 0; right: 0; bottom: 14%; overflow: hidden; white-space: nowrap; font-weight: 700; font-size: calc(var(--u) * 3); color: rgba(199, 210, 254, 0.7); }
+  .landscape #s7 .cities { bottom: 8%; }
+  .square #s7 .cities { bottom: 5%; }
+  #s7 .cities span { display: inline-block; will-change: transform; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="shared.js"></script>
+<script>
+/* ------------------------------------------------------------------------
+ * RentNest 30s / 15s promo. Scenes are built once; seek(t) poses them.
+ * Params: ?w=1080&h=1920&cut=30|15&assets=../assets
+ * --------------------------------------------------------------------- */
+const P = new URLSearchParams(location.search);
+const W = +P.get("w") || 1080, H = +P.get("h") || 1920;
+const CUT = P.get("cut") === "15" ? "15" : "30";
+const A = (P.get("assets") || "../assets") + "/";
+const { k, ease, lerp, inr, clamp, phone, scrollPhone, LOGO_SVG, PIN_SVG, CHECK_SVG } = RN;
+
+const stage = document.getElementById("stage");
+stage.style.width = W + "px";
+stage.style.height = H + "px";
+stage.style.setProperty("--u", Math.min(W, H) / 100 + "px");
+const aspect = W / H < 0.8 ? "portrait" : W / H > 1.3 ? "landscape" : "square";
+stage.className = aspect;
+
+const SCHEDULE = CUT === "15"
+  ? { s1: [0, 2.6], s2: [2.6, 5.6], s3: [5.6, 8.8], s5: [8.8, 11.8], s7: [11.8, 15] }
+  : { s1: [0, 3.2], s2: [3.2, 7], s3: [7, 12], s4: [12, 16.5], s5: [16.5, 21.5], s6: [21.5, 25.5], s7: [25.5, 30] };
+window.DURATION = CUT === "15" ? 15 : 30;
+window.CUTS = Object.values(SCHEDULE).map((s) => s[0]).filter(Boolean);
+window.DROP = SCHEDULE.s2[0];
+window.ENDCARD = SCHEDULE.s7[0];
+
+const h = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+const bug = `<div class="bug rn-logo">${LOGO_SVG}<span>RentNest</span></div>`;
+const lines = (arr) => arr.map((l) => `<span class="line"><span>${l}</span></span>`).join("");
+
+// ---- Scene definitions --------------------------------------------------
+const scenes = {};
+
+scenes.s1 = {
+  el: h(`<section class="scene dark" id="s1">${bug}
+    <div class="copy"><h1 class="display">${lines(["That ₹60,000", "camera you used", `<span class="hl">twice</span> this year?`])}</h1></div>
+    <div class="visual"><div class="cam">
+      <svg viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 22h20l8-12h36l8 12h20a8 8 0 0 1 8 8v44a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V30a8 8 0 0 1 8-8z"/>
+        <circle cx="60" cy="52" r="20"/><circle cx="60" cy="52" r="9" fill="currentColor" stroke="none" opacity=".35"/><circle cx="96" cy="34" r="3" fill="currentColor"/>
+      </svg>
+      <div class="pricetag">₹60,000</div>
+      <div class="dust">Sitting in a cupboard since Diwali</div>
+    </div></div></section>`),
+  update(t) {
+    this.el.querySelectorAll(".line > span").forEach((s, i) => (s.style.transform = `translateY(${(1 - k(t, 0.12 + i * 0.28, 0.55)) * 110}%)`));
+    this.el.querySelector(".hl").style.setProperty("--draw", k(t, 1.2, 0.5));
+    const cam = this.el.querySelector(".cam");
+    const inP = k(t, 0.5, 0.8, ease.back);
+    cam.style.transform = `translate(-50%, -50%) scale(${lerp(0.7, 1, inP)}) rotate(${lerp(-10, -3, inP) + Math.sin(t * 2) * 1.2}deg)`;
+    cam.style.opacity = k(t, 0.5, 0.4);
+    this.el.querySelector(".pricetag").style.transform = `scale(${k(t, 1.1, 0.5, ease.back)}) rotate(8deg)`;
+    this.el.querySelector(".dust").style.opacity = k(t, 1.7, 0.5);
+  },
+};
+
+scenes.s2 = {
+  el: h(`<section class="scene indigo" id="s2">${bug}
+    <div class="copy"><div class="eyebrow">For owners</div><h2 class="display">${lines(["Rent it out."])}</h2>
+      <div class="counter"><span class="num">₹0</span><small>/month</small></div>
+      <div class="fine">Sony A7 III · ₹1,800/day · rented 12 days · after fees</div></div>
+    <div class="visual"><div class="phone-slot"></div></div></section>`),
+  init() { this.ph = phone(A + "s-earnings.jpg", "Earnings dashboard"); this.el.querySelector(".phone-slot").appendChild(this.ph); },
+  update(t, d) {
+    this.el.querySelector(".line > span").style.transform = `translateY(${(1 - k(t, 0.1, 0.5)) * 110}%)`;
+    const target = 1800 * 12 * (1 - 0.15 - 0.15 * 0.18); // owner keeps rent − 15% commission − GST on it
+    this.el.querySelector(".num").textContent = inr(target * k(t, 0.6, 1.8, ease.inOut));
+    this.el.querySelector(".counter").style.opacity = k(t, 0.45, 0.3);
+    this.el.querySelector(".fine").style.opacity = k(t, 1.2, 0.5);
+    this.el.querySelector(".eyebrow").style.opacity = k(t, 0, 0.4) * 0.8;
+    const slot = this.el.querySelector(".phone-slot");
+    const off = (1 - k(t, 0.5, 0.9)) * 40;
+    slot.style.transform = aspect === "landscape" ? `translate(${off}%, 0)` : `translate(-50%, ${off}%)`;
+    scrollPhone(this.ph, k(t, 1.8, d - 2, ease.inOut), 0.6);
+  },
+};
+
+scenes.s3 = {
+  el: h(`<section class="scene paper" id="s3">${bug.replace("rn-logo", "rn-logo").replace('<span>RentNest', '<span style="color:var(--ink)">RentNest')}
+    <div class="copy"><div class="eyebrow" style="color:var(--indigo)">For renters</div><h2 class="display">${lines(["Need something?", `It's probably <span style="color:var(--indigo)">next door.</span>`])}</h2></div>
+    <div class="visual"><div class="radar">${'<div class="ring"></div>'.repeat(4)}</div><div class="phone-slot"></div>
+      <div class="pill float-chip c1"><span class="pin">${PIN_SVG}</span>Andheri, Mumbai</div>
+      <div class="pill float-chip c2"><b>0.4 km</b>&nbsp;away · ₹700/day</div></div></section>`),
+  init() { this.ph = phone(A + "s-home.jpg", "RentNest home screen"); this.el.querySelector(".phone-slot").appendChild(this.ph); },
+  update(t, d) {
+    this.el.querySelectorAll(".line > span").forEach((s, i) => (s.style.transform = `translateY(${(1 - k(t, 0.1 + i * 0.25, 0.55)) * 110}%)`));
+    this.el.querySelector(".eyebrow").style.opacity = k(t, 0, 0.4) * 0.9;
+    const slot = this.el.querySelector(".phone-slot");
+    const off = (1 - k(t, 0.3, 0.9)) * 40;
+    slot.style.transform = aspect === "landscape" ? `translate(0, ${off}%)` : `translate(-50%, ${off}%)`;
+    scrollPhone(this.ph, k(t, 1.3, d - 1.6, ease.inOut), 2.2);
+    const size = Math.min(W, H) * 0.9;
+    this.el.querySelectorAll(".ring").forEach((r, i) => {
+      const p = ((t + i * 0.6) % 2.4) / 2.4;
+      r.style.width = r.style.height = size * p + "px";
+      r.style.opacity = (1 - p) * 0.35 * k(t, 0.4, 0.5);
+    });
+    const u = Math.min(W, H) / 100;
+    const c1 = this.el.querySelector(".c1"), c2 = this.el.querySelector(".c2");
+    const pos = aspect === "landscape" ? [[4, 22], [42, 70]] : aspect === "square" ? [[6, 12], [56, 44]] : [[5, 10], [47, 36]];
+    c1.style.left = pos[0][0] + "%"; c1.style.top = pos[0][1] + "%";
+    c2.style.left = pos[1][0] + "%"; c2.style.top = pos[1][1] + "%";
+    c1.style.transform = `translateY(${Math.sin(t * 2.2) * u * 0.6}px) scale(${k(t, 1.1, 0.5, ease.back)})`;
+    c2.style.transform = `translateY(${Math.cos(t * 2) * u * 0.6}px) scale(${k(t, 1.6, 0.5, ease.back)})`;
+  },
+};
+
+const CATS = [
+  ["DSLR camera", 1200], ["PlayStation 5", 900], ["Camping tent", 350], ["Projector", 1100],
+  ["Royal Enfield", 1400], ["Bridal lehenga", 2500], ["Power drill", 250], ["Treadmill", 300],
+];
+scenes.s4 = {
+  el: h(`<section class="scene dark" id="s4">${bug}
+    <div class="copy"><h2 class="display">${lines(["Why buy it?", `<span class="hl" style="--draw:1">Rent it.</span>`])}</h2>
+      <p class="sub" style="color:var(--lav)">Cameras to camping gear, from people near you.</p></div>
+    <div class="visual"><div class="grid">${CATS.map(([n, p]) => `<div class="cat"><div class="n">${n}</div><div class="p">from ${inr(p * 100 / 100)}/day</div></div>`).join("")}</div></div></section>`),
+  update(t) {
+    this.el.querySelectorAll(".line > span").forEach((s, i) => (s.style.transform = `translateY(${(1 - k(t, 0.1 + i * 0.3, 0.55)) * 110}%)`));
+    this.el.querySelector(".sub").style.opacity = k(t, 0.9, 0.5);
+    this.el.querySelectorAll(".cat").forEach((c, i) => {
+      const p = k(t, 0.5 + i * 0.16, 0.6, ease.back);
+      const dx = ((i * 37) % 11) - 5, rot = ((i * 53) % 13) - 6;
+      c.style.opacity = clamp(p * 1.4);
+      c.style.transform = `translate(${(1 - p) * dx * 8}%, ${(1 - p) * 60}%) rotate(${(1 - p) * rot}deg) scale(${lerp(0.8, 1, p)})`;
+    });
+  },
+};
+
+scenes.s5 = {
+  el: h(`<section class="scene paper" id="s5">${bug.replace('<span>RentNest', '<span style="color:var(--ink)">RentNest')}
+    <div class="copy"><h2 class="display">${lines(["Safe by design."])}</h2>
+      <ul class="trust">
+        <li><span class="tick">${CHECK_SVG}</span>Verified owners & renters</li>
+        <li><span class="tick">${CHECK_SVG}</span>Deposit held safely till return</li>
+        <li><span class="tick">${CHECK_SVG}</span>Photo-checked handover</li>
+      </ul></div>
+    <div class="visual"><div class="phone-slot"></div></div></section>`),
+  init() { this.ph = phone(A + "s-booking.jpg", "Booking confirmed screen"); this.el.querySelector(".phone-slot").appendChild(this.ph); },
+  update(t, d) {
+    this.el.querySelector(".line > span").style.transform = `translateY(${(1 - k(t, 0.1, 0.55)) * 110}%)`;
+    this.el.querySelectorAll(".trust li").forEach((li, i) => {
+      const p = k(t, 0.7 + i * 0.45, 0.45);
+      li.style.opacity = p;
+      li.style.transform = `translateX(${(1 - p) * -6}%)`;
+      li.querySelector(".check-path").style.setProperty("--dash", 1 - k(t, 0.9 + i * 0.45, 0.4));
+    });
+    const slot = this.el.querySelector(".phone-slot");
+    const off = (1 - k(t, 0.4, 0.9)) * 40;
+    slot.style.transform = aspect === "landscape" ? `translate(${off}%, 0)` : `translate(-50%, ${off}%)`;
+    scrollPhone(this.ph, k(t, 2.6, d - 2.8, ease.inOut), 0.22);
+  },
+};
+
+scenes.s6 = {
+  el: h(`<section class="scene indigo" id="s6">${bug}
+    <div class="copy"><h2 class="display">${lines(["Three steps.", "That's it."])}</h2></div>
+    <div class="visual"><div class="steps">
+      <div class="step"><div class="num">1</div><div><div class="t">Find it nearby</div><div class="d">Search your area, compare prices</div></div></div>
+      <div class="step"><div class="num">2</div><div><div class="t">Book & pay securely</div><div class="d">UPI, cards, netbanking</div></div></div>
+      <div class="step"><div class="num">3</div><div><div class="t">Pick up, use, return</div><div class="d">Deposit comes back after return</div></div></div>
+    </div></div></section>`),
+  update(t) {
+    this.el.querySelectorAll(".line > span").forEach((s, i) => (s.style.transform = `translateY(${(1 - k(t, 0.1 + i * 0.28, 0.55)) * 110}%)`));
+    this.el.querySelectorAll(".step").forEach((s, i) => {
+      const p = k(t, 0.6 + i * 0.4, 0.55, ease.back);
+      s.style.opacity = clamp(p * 1.3);
+      s.style.transform = `translateY(${(1 - p) * 30}%) scale(${lerp(0.92, 1, p)})`;
+    });
+  },
+};
+
+const CITIES = "Mumbai · Delhi · Bengaluru · Pune · Hyderabad · Chennai · Kolkata · Ahmedabad · Jaipur · Jodhpur · ";
+scenes.s7 = {
+  el: h(`<section class="scene dark" id="s7"><div class="center">
+      <div class="mark">${LOGO_SVG}</div>
+      <div class="name">RentNest</div>
+      <div class="tag"><b>Rent anything.</b> Earn from everything.</div>
+      <div class="pill cta">Start on rentnest.in</div>
+      <div class="free">Listing is free · Payments protected</div>
+    </div><div class="cities"><span>${CITIES.repeat(4)}</span></div></section>`),
+  update(t) {
+    const m = this.el.querySelector(".mark");
+    m.style.transform = `scale(${k(t, 0.05, 0.7, ease.back)}) rotate(${(1 - k(t, 0.05, 0.7)) * -20}deg)`;
+    const seq = [[".name", 0.35], [".tag", 0.6], [".cta", 0.95], [".free", 1.25]];
+    for (const [sel, at] of seq) {
+      const p = k(t, at, 0.5, sel === ".cta" ? ease.back : ease.out);
+      const e = this.el.querySelector(sel);
+      e.style.opacity = clamp(p);
+      e.style.transform = sel === ".cta" ? `scale(${lerp(0.6, 1, p) + Math.max(0, Math.sin((t - 2) * 4)) * 0.03 * (t > 2 ? 1 : 0)})` : `translateY(${(1 - p) * 30}px)`;
+    }
+    const c = this.el.querySelector(".cities span");
+    c.style.transform = `translateX(${-t * Math.min(W, H) * 0.06}px)`;
+    this.el.querySelector(".cities").style.opacity = k(t, 1.4, 0.6);
+  },
+};
+
+// ---- Build & seek ------------------------------------------------------
+const order = Object.keys(SCHEDULE);
+for (const id of order) { stage.appendChild(scenes[id].el); scenes[id].init?.(); }
+
+window.seek = function (t) {
+  order.forEach((id, idx) => {
+    const [a, b] = SCHEDULE[id];
+    const s = scenes[id];
+    const last = idx === order.length - 1;
+    // Keep the previous scene visible briefly under the incoming one (crossfade)
+    const visible = t >= a && (t < b + 0.35 || last);
+    s.el.style.visibility = visible ? "visible" : "hidden";
+    if (!visible) return;
+    const lt = t - a, d = b - a;
+    const enter = idx === 0 ? 1 : k(lt, 0, 0.35);
+    s.el.style.opacity = enter;
+    s.el.style.transform = `scale(${lerp(1.04, 1, enter)})`;
+    s.update(Math.min(lt, d), d);
+  });
+};
+
+window.READY = Promise.all([document.fonts.ready, ...[...document.images].map((i) => (i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r; })))]).then(() => { window.seek(0); return true; });
+</script>
+</body>
+</html>

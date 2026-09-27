@@ -1,0 +1,642 @@
+<title>Rent or Earn</title>
+<meta name="description" content="RentNest interactive film: choose to rent something near you or earn from things you own." />
+<style>
+/*SHARED_CSS*/
+
+/* ---------------------------------------------------------------------------
+   Interactive "choose your path" film. A single deliberate dark stage that
+   behaves like a vertical video player (works as a landing page or a
+   playable ad). All colours are set explicitly on purpose.
+   ------------------------------------------------------------------------ */
+html, body { height: 100%; }
+body {
+  margin: 0; background: #0a0926; color: var(--white); font-family: var(--font);
+  -webkit-font-smoothing: antialiased; display: grid; place-items: center; overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--marigold); outline-offset: 3px; }
+h2[tabindex="-1"]:focus { outline: none; }
+
+.stage {
+  --u: 4px;
+  position: relative; height: 100%; max-height: 960px; aspect-ratio: 9 / 16; max-width: 100%;
+  overflow: hidden; border-radius: 18px; box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
+  background: var(--ink); isolation: isolate; user-select: none; -webkit-user-select: none;
+}
+@media (max-width: 560px) { .stage { border-radius: 0; height: 100%; width: 100%; aspect-ratio: auto; max-height: none; } }
+
+.scene { position: absolute; inset: 0; visibility: hidden; opacity: 0; transition: opacity 0.35s ease; }
+.scene.on { visibility: visible; opacity: 1; }
+.scene.dark { background: radial-gradient(120% 80% at 80% 0%, #2a2380 0%, var(--ink) 55%); }
+.scene.indigo { background: radial-gradient(120% 90% at 10% 100%, #7b72ff 0%, var(--indigo) 45%, #3b33c9 100%); }
+.scene.paper { background: var(--paper); color: var(--ink); }
+.pad { position: absolute; inset: calc(var(--u) * 20) calc(var(--u) * 7) calc(var(--u) * 8); display: flex; flex-direction: column; }
+
+.display { font-weight: 900; letter-spacing: -0.045em; line-height: 0.98; font-size: calc(var(--u) * 10.4); margin: 0; text-wrap: balance; }
+.display.sm { font-size: calc(var(--u) * 8.4); }
+.eyebrow { font-weight: 800; font-size: calc(var(--u) * 2.6); letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.85; margin-bottom: calc(var(--u) * 2.4); }
+.sub { font-weight: 600; font-size: calc(var(--u) * 3.8); line-height: 1.3; margin: calc(var(--u) * 2.4) 0 0; color: var(--lav); }
+.paper .sub { color: var(--muted-ink); }
+.line { display: block; overflow: hidden; padding-bottom: 0.08em; }
+.line > span { display: inline-block; }
+.hl { color: var(--marigold); }
+
+/* Top chrome: chapter segments + controls */
+.chrome { position: absolute; z-index: 20; left: 0; right: 0; top: 0; padding: calc(var(--u) * 3) calc(var(--u) * 4) 0; pointer-events: none; }
+.segs { display: flex; gap: calc(var(--u) * 1); }
+.seg { flex: 1; height: calc(var(--u) * 0.9); border-radius: 99px; background: rgba(255, 255, 255, 0.28); overflow: hidden; }
+.seg i { display: block; height: 100%; width: 0; background: var(--white); border-radius: inherit; }
+.bar { display: flex; align-items: center; justify-content: space-between; margin-top: calc(var(--u) * 2.6); }
+.brand { font-size: calc(var(--u) * 3.6); }
+.brand svg { width: calc(var(--u) * 6.4); height: calc(var(--u) * 6.4); }
+.ctrls { display: flex; gap: calc(var(--u) * 1.6); pointer-events: auto; }
+.ctrl { width: calc(var(--u) * 9); height: calc(var(--u) * 9); border-radius: 50%; border: 0; background: rgba(10, 9, 38, 0.45); backdrop-filter: blur(6px); display: grid; place-items: center; }
+.ctrl svg { width: 48%; height: 48%; }
+.chrome.on-paper .seg { background: rgba(19, 18, 58, 0.18); }
+.chrome.on-paper .seg i { background: var(--indigo); }
+.chrome.on-paper .brand { color: var(--ink); }
+.chrome.on-paper .ctrl { background: rgba(19, 18, 58, 0.08); color: var(--ink); }
+
+/* Tap zones for auto-playing chapters (story-style) */
+.tapzones { position: absolute; inset: calc(var(--u) * 18) 0 0; z-index: 10; display: grid; grid-template-columns: 1fr 2fr; }
+.tapzones button { background: transparent; border: 0; }
+.tapzones[hidden] { display: none; }
+.hint { position: absolute; z-index: 11; left: 50%; bottom: calc(var(--u) * 5); transform: translateX(-50%); font-size: calc(var(--u) * 2.8); font-weight: 600; color: rgba(255, 255, 255, 0.7); white-space: nowrap; pointer-events: none; }
+.on-paper-hint { color: rgba(19, 18, 58, 0.55); }
+
+/* Choice buttons */
+.choices { display: grid; gap: calc(var(--u) * 3); margin-top: auto; }
+.choice {
+  display: flex; align-items: center; gap: calc(var(--u) * 3.4); text-align: left; width: 100%;
+  border: 0; border-radius: calc(var(--u) * 4); padding: calc(var(--u) * 4.4) calc(var(--u) * 4.4);
+  background: var(--white); color: var(--ink); box-shadow: 0 calc(var(--u) * 2) calc(var(--u) * 6) rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+.choice:hover { transform: translateY(-2px); }
+.choice:active { transform: scale(0.98); }
+.choice .ic { flex: none; width: calc(var(--u) * 13); height: calc(var(--u) * 13); border-radius: calc(var(--u) * 3.2); display: grid; place-items: center; }
+.choice .ic svg { width: 55%; height: 55%; }
+.choice .t { font-weight: 800; font-size: calc(var(--u) * 5); letter-spacing: -0.02em; line-height: 1.05; }
+.choice .d { font-weight: 600; font-size: calc(var(--u) * 3.2); color: var(--muted-ink); margin-top: calc(var(--u) * 1); }
+.choice.alt { background: var(--marigold); }
+.choice.alt .d { color: #5a3d00; }
+
+/* Chips & tiles */
+.chips { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 2.2); margin-top: calc(var(--u) * 6); }
+.chip {
+  border: 1.5px solid rgba(19, 18, 58, 0.14); background: var(--white); color: var(--ink); border-radius: 999px;
+  padding: calc(var(--u) * 2.6) calc(var(--u) * 4.2); font-weight: 700; font-size: calc(var(--u) * 3.8);
+  display: inline-flex; align-items: center; gap: calc(var(--u) * 1.4); transition: transform 0.15s, background 0.15s;
+}
+.chip:hover { border-color: var(--indigo); }
+.chip.sel { background: var(--indigo); color: var(--white); border-color: var(--indigo); }
+.chip .pin { color: var(--indigo); display: inline-flex; }
+.chip.sel .pin { color: var(--white); }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: calc(var(--u) * 2.4); margin-top: calc(var(--u) * 5); }
+.tile {
+  text-align: left; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.08);
+  border-radius: calc(var(--u) * 3); padding: calc(var(--u) * 3.2); transition: transform 0.15s, background 0.15s;
+}
+.tile:hover { background: rgba(255, 255, 255, 0.16); }
+.tile:active { transform: scale(0.97); }
+.tile .n { font-weight: 800; font-size: calc(var(--u) * 3.9); letter-spacing: -0.02em; line-height: 1.1; }
+.tile .p { font-weight: 700; font-size: calc(var(--u) * 3.1); color: var(--marigold); margin-top: calc(var(--u) * 1); }
+
+/* Price breakdown card */
+.receipt { margin-top: calc(var(--u) * 5); background: var(--white); color: var(--ink); border-radius: calc(var(--u) * 4); padding: calc(var(--u) * 4.4); box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 8) rgba(30, 28, 86, 0.18); font-variant-numeric: tabular-nums; }
+.receipt .head { display: flex; justify-content: space-between; align-items: baseline; gap: calc(var(--u) * 2); font-weight: 800; font-size: calc(var(--u) * 4.2); letter-spacing: -0.02em; }
+.receipt .head span:last-child { color: var(--indigo); font-size: calc(var(--u) * 3.2); font-weight: 700; white-space: nowrap; }
+.receipt .rows { margin-top: calc(var(--u) * 3); display: grid; gap: calc(var(--u) * 1.8); }
+.receipt .row { display: flex; justify-content: space-between; font-size: calc(var(--u) * 3.4); font-weight: 600; color: var(--muted-ink); }
+.receipt .row b { color: var(--ink); font-weight: 700; }
+.receipt .row.total { border-top: 2px dashed rgba(19, 18, 58, 0.15); padding-top: calc(var(--u) * 2.4); margin-top: calc(var(--u) * 0.6); font-size: calc(var(--u) * 4.2); color: var(--ink); font-weight: 800; }
+.receipt .note { margin-top: calc(var(--u) * 2.4); font-size: calc(var(--u) * 2.9); color: var(--mint); font-weight: 700; display: flex; gap: calc(var(--u) * 1.4); align-items: center; }
+.receipt .note .tick { width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); }
+
+/* Earnings */
+.earn-num { font-weight: 900; letter-spacing: -0.05em; font-size: calc(var(--u) * 15); line-height: 1; color: var(--marigold); margin-top: calc(var(--u) * 4); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.earn-num small { font-size: 0.3em; color: var(--white); margin-left: 0.2em; letter-spacing: -0.01em; }
+.earn-year { font-weight: 700; font-size: calc(var(--u) * 3.8); color: var(--lav); margin-top: calc(var(--u) * 1.6); }
+.slider { margin-top: calc(var(--u) * 7); }
+.slider label { display: flex; justify-content: space-between; font-weight: 700; font-size: calc(var(--u) * 3.6); }
+.slider label b { color: var(--marigold); }
+input[type="range"] { width: 100%; margin-top: calc(var(--u) * 3); accent-color: var(--marigold); height: calc(var(--u) * 8); }
+.pro {
+  margin-top: calc(var(--u) * 3.4); display: flex; align-items: center; gap: calc(var(--u) * 3); width: 100%; text-align: left;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: calc(var(--u) * 3); padding: calc(var(--u) * 3);
+}
+.pro .sw { flex: none; width: calc(var(--u) * 11); height: calc(var(--u) * 6.4); border-radius: 99px; background: rgba(255, 255, 255, 0.25); position: relative; transition: background 0.2s; }
+.pro .sw::after { content: ""; position: absolute; top: 12%; left: 8%; width: calc(var(--u) * 4.8); height: calc(var(--u) * 4.8); border-radius: 50%; background: var(--white); transition: left 0.2s; }
+.pro[aria-pressed="true"] .sw { background: var(--marigold); }
+.pro[aria-pressed="true"] .sw::after { left: 48%; }
+.pro .t { font-weight: 800; font-size: calc(var(--u) * 3.6); }
+.pro .d { font-weight: 600; font-size: calc(var(--u) * 2.9); color: var(--lav); margin-top: calc(var(--u) * 0.6); }
+
+.primary {
+  margin-top: auto; width: 100%; border: 0; border-radius: 999px; background: var(--marigold); color: var(--ink);
+  font-weight: 800; font-size: calc(var(--u) * 4.6); padding: calc(var(--u) * 4.2); letter-spacing: -0.01em;
+  box-shadow: 0 calc(var(--u) * 1.5) calc(var(--u) * 5) rgba(255, 176, 32, 0.35); text-decoration: none; text-align: center; display: block;
+}
+.primary.indigo { background: var(--indigo); color: var(--white); box-shadow: 0 calc(var(--u) * 1.5) calc(var(--u) * 5) rgba(79, 70, 229, 0.35); }
+
+/* Trust */
+.trust { list-style: none; padding: 0; margin: calc(var(--u) * 7) 0 0; display: grid; gap: calc(var(--u) * 4); }
+.trust li { display: flex; gap: calc(var(--u) * 3); align-items: flex-start; }
+.trust .tick { width: calc(var(--u) * 8); height: calc(var(--u) * 8); margin-top: calc(var(--u) * 0.4); }
+.trust .t { font-weight: 800; font-size: calc(var(--u) * 4.6); letter-spacing: -0.02em; line-height: 1.1; }
+.trust .d { font-weight: 600; font-size: calc(var(--u) * 3.3); color: var(--muted-ink); margin-top: calc(var(--u) * 1); line-height: 1.35; }
+.check-path { stroke-dasharray: 1; stroke-dashoffset: var(--dash, 1); }
+
+/* Hook camera */
+.cam { width: 62%; margin: auto auto calc(var(--u) * 10); position: relative; color: var(--marigold); }
+.cam svg { width: 100%; height: auto; overflow: visible; }
+.pricetag { position: absolute; right: -8%; top: 0; background: var(--white); color: var(--ink); font-weight: 900; font-size: calc(var(--u) * 4.4); padding: calc(var(--u) * 1.3) calc(var(--u) * 2.6); border-radius: calc(var(--u) * 1.6); }
+
+/* Phone peeking in reveal */
+.peek { position: absolute; right: calc(var(--u) * -10); bottom: calc(var(--u) * -30); width: 48%; transform: rotate(-8deg); opacity: 0.95; z-index: 0; }
+.receipt, .scene .pad > * { position: relative; z-index: 1; }
+
+/* End card */
+.end { align-items: center; text-align: center; justify-content: center; }
+.end .mark svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
+.end .name { font-weight: 900; letter-spacing: -0.05em; font-size: calc(var(--u) * 12); margin-top: calc(var(--u) * 3); line-height: 1; }
+.end .tag { font-weight: 700; font-size: calc(var(--u) * 4.4); margin-top: calc(var(--u) * 2.6); color: var(--lav); text-wrap: balance; }
+.end .tag b { color: var(--white); }
+.end .summary { margin-top: calc(var(--u) * 6); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: calc(var(--u) * 3); padding: calc(var(--u) * 3.4) calc(var(--u) * 4); font-weight: 700; font-size: calc(var(--u) * 3.6); width: 100%; box-sizing: border-box; }
+.end .summary b { color: var(--marigold); }
+.end .primary { margin-top: calc(var(--u) * 6); }
+.end .row { display: flex; gap: calc(var(--u) * 2.4); margin-top: calc(var(--u) * 3.4); width: 100%; }
+.ghost { flex: 1; border: 1.5px solid rgba(255, 255, 255, 0.3); background: transparent; border-radius: 999px; padding: calc(var(--u) * 3); font-weight: 700; font-size: calc(var(--u) * 3.4); }
+.fine { margin-top: calc(var(--u) * 3.4); font-size: calc(var(--u) * 2.7); color: rgba(199, 210, 254, 0.75); font-weight: 600; }
+
+.toast { position: absolute; z-index: 30; left: 50%; bottom: calc(var(--u) * 8); transform: translate(-50%, 20px); opacity: 0; background: var(--white); color: var(--ink); padding: calc(var(--u) * 2.4) calc(var(--u) * 4.4); border-radius: 999px; font-weight: 700; font-size: calc(var(--u) * 3.4); transition: 0.25s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) { .scene { transition: none; } }
+</style>
+
+<main class="stage" id="stage" aria-label="RentNest interactive film">
+  <div class="chrome" id="chrome">
+    <div class="segs" id="segs"></div>
+    <div class="bar">
+      <div class="brand rn-logo" id="brandLogo"></div>
+      <div class="ctrls">
+        <button class="ctrl" id="soundBtn" aria-label="Turn sound on" aria-pressed="false"></button>
+        <button class="ctrl" id="pauseBtn" aria-label="Pause"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. Hook -->
+  <section class="scene dark" id="hook" data-auto="3.6">
+    <div class="pad">
+      <h1 class="display"><span class="line"><span>That ₹60,000</span></span><span class="line"><span>camera you used</span></span><span class="line"><span><span class="hl">twice</span> this year?</span></span></h1>
+      <div class="cam" aria-hidden="true">
+        <svg viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 22h20l8-12h36l8 12h20a8 8 0 0 1 8 8v44a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V30a8 8 0 0 1 8-8z"/><circle cx="60" cy="52" r="20"/><circle cx="60" cy="52" r="9" fill="currentColor" stroke="none" opacity=".35"/><circle cx="96" cy="34" r="3" fill="currentColor"/></svg>
+        <div class="pricetag">₹60,000</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Choose a path -->
+  <section class="scene indigo" id="choose">
+    <div class="pad">
+      <div class="eyebrow">Your turn</div>
+      <h2 class="display">What brings you here?</h2>
+      <p class="sub">Pick one. We'll show you what it looks like near you.</p>
+      <div class="choices">
+        <button class="choice" data-path="rent">
+          <span class="ic" style="background:#eef0ff;color:var(--indigo)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+          <span><span class="t">I want to rent something</span><span class="d" style="display:block">Cameras, bikes, tents, gaming and more</span></span>
+        </button>
+        <button class="choice alt" data-path="earn">
+          <span class="ic" style="background:rgba(255,255,255,.55);color:#7a4a00"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M14.5 21 6 13h3a4.5 4.5 0 0 0 0-9"/></svg></span>
+          <span><span class="t">I want to earn from my stuff</span><span class="d" style="display:block">See what your idle things could make</span></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- R1. City -->
+  <section class="scene paper" id="city">
+    <div class="pad">
+      <div class="eyebrow" style="color:var(--indigo)">Step 1 of 2</div>
+      <h2 class="display sm">Where are you?</h2>
+      <p class="sub">We show items closest to your area first.</p>
+      <div class="chips" id="cityChips"></div>
+    </div>
+  </section>
+
+  <!-- R2. Category -->
+  <section class="scene dark" id="cat">
+    <div class="pad">
+      <div class="eyebrow">Step 2 of 2</div>
+      <h2 class="display sm">What do you need?</h2>
+      <div class="tiles" id="catTiles"></div>
+    </div>
+  </section>
+
+  <!-- R3. Price reveal -->
+  <section class="scene paper" id="price" data-auto="8">
+    <div class="pad">
+      <div class="eyebrow" style="color:var(--indigo)" id="priceEyebrow">In Mumbai</div>
+      <h2 class="display sm" id="priceTitle">A DSLR camera for the weekend</h2>
+      <div class="receipt" id="receipt"></div>
+    </div>
+    <div class="peek" id="pricePeek"></div>
+  </section>
+
+  <!-- E1. Item -->
+  <section class="scene dark" id="item">
+    <div class="pad">
+      <div class="eyebrow">Step 1 of 2</div>
+      <h2 class="display sm">What's sitting idle at home?</h2>
+      <div class="tiles" id="itemTiles"></div>
+    </div>
+  </section>
+
+  <!-- E2. Earnings -->
+  <section class="scene indigo" id="earn">
+    <div class="pad">
+      <div class="eyebrow" id="earnEyebrow">Your DSLR camera</div>
+      <h2 class="display sm">You could make</h2>
+      <div class="earn-num"><span id="earnNum">₹0</span><small>/month</small></div>
+      <div class="earn-year" id="earnYear">That's ₹0 a year</div>
+      <div class="slider">
+        <label for="days"><span>Days rented per month</span><b id="daysOut">8 days</b></label>
+        <input type="range" id="days" min="2" max="20" step="1" value="8" />
+      </div>
+      <button class="pro" id="proBtn" aria-pressed="false">
+        <span class="sw" aria-hidden="true"></span>
+        <span><span class="t" style="display:block">With Owner Pro</span><span class="d" style="display:block" id="proDesc">10% commission instead of 15%, for ₹499/month</span></span>
+      </button>
+      <button class="primary" id="earnNext">See how you're protected</button>
+    </div>
+  </section>
+
+  <!-- Trust (both paths) -->
+  <section class="scene paper" id="trust" data-auto="6">
+    <div class="pad">
+      <div class="eyebrow" style="color:var(--indigo)">Why it's safe</div>
+      <h2 class="display sm">Safe by design.</h2>
+      <ul class="trust" id="trustList"></ul>
+    </div>
+  </section>
+
+  <!-- End card -->
+  <section class="scene dark" id="end">
+    <div class="pad end">
+      <div class="mark" id="endMark"></div>
+      <div class="name">RentNest</div>
+      <div class="tag"><b>Rent anything.</b> Earn from everything.</div>
+      <div class="summary" id="endSummary"></div>
+      <a class="primary" id="cta" href="#" target="_blank" rel="noopener">Start on RentNest</a>
+      <div class="row">
+        <button class="ghost" id="switchBtn">Try the other path</button>
+        <button class="ghost" id="shareBtn">Copy link</button>
+      </div>
+      <button class="ghost" id="replayBtn" style="flex:none;margin-top:calc(var(--u)*2.4);width:100%">Watch again</button>
+      <div class="fine">Example prices. Listing is free · Payments by Razorpay</div>
+    </div>
+  </section>
+
+  <div class="tapzones" id="tapzones">
+    <button id="tapBack" aria-label="Previous chapter"></button>
+    <button id="tapNext" aria-label="Next chapter"></button>
+  </div>
+  <div class="hint" id="hint">Tap to skip</div>
+  <div class="toast" id="toast" role="status"></div>
+</main>
+
+<script>
+/*SHARED_JS*/
+</script>
+<script>
+(() => {
+  /* ======================= Configuration ============================== */
+  // Where CTAs send people. Change to your production domain before launch.
+  const SITE_URL = "https://rentnest.in";
+  const UTM = "utm_source=interactive_video&utm_medium=paid_social&utm_campaign=rent_or_earn";
+  const COMMISSION = 0.15, PRO_COMMISSION = 0.10, GST = 0.18, SERVICE_FEE = 0.05, PRO_PRICE = 499;
+  const AUDIO_SRC = "{{AUDIO}}";
+  const IMG = { browse: "{{IMG:s-browse.jpg}}", dashboard: "{{IMG:s-dashboard.jpg}}" };
+
+  const CITIES = [
+    ["Mumbai", "mumbai"], ["Delhi", "delhi"], ["Bengaluru", "bengaluru"], ["Pune", "pune"], ["Hyderabad", "hyderabad"],
+    ["Chennai", "chennai"], ["Kolkata", "kolkata"], ["Ahmedabad", "ahmedabad"], ["Jaipur", "jaipur"], ["Jodhpur", "jodhpur"],
+  ];
+  // name, category slug, typical ₹/day, typical deposit ₹, occasion, name as used mid-sentence
+  const ITEMS = [
+    ["DSLR camera", "dslr-mirrorless", 1200, 20000, "a wedding shoot", "DSLR camera"],
+    ["PlayStation 5", "gaming-consoles", 900, 15000, "a gaming weekend", "PlayStation 5"],
+    ["Camping tent", "tents", 350, 3000, "a Himalayan trek", "camping tent"],
+    ["Projector", "projectors", 1100, 12000, "match night", "projector"],
+    ["Royal Enfield", "motorbikes", 1400, 10000, "a road trip", "Royal Enfield"],
+    ["Bridal lehenga", "ethnic-wear", 2500, 15000, "the big day", "bridal lehenga"],
+    ["Power drill", "power-tools", 250, 2500, "a weekend DIY", "power drill"],
+    ["Treadmill", "gym-equipment", 300, 6000, "a fitness month", "treadmill"],
+  ];
+
+  const { k, ease, lerp, inr, clamp, phone, LOGO_SVG, PIN_SVG, CHECK_SVG } = RN;
+  const $ = (s) => document.querySelector(s);
+  const stage = $("#stage");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ======================= State ====================================== */
+  const state = { path: null, city: CITIES[0], item: ITEMS[0], days: 8, pro: false, visited: new Set() };
+  let flow = ["hook", "choose", "city", "cat", "price", "trust", "end"];
+  let current = null, t0 = 0, paused = false, pausedAt = 0;
+
+  /* ======================= Analytics & ad hooks ======================= */
+  function track(event, data = {}) {
+    const payload = { event: `rn_${event}`, path: state.path, city: state.city[1], item: state.item[1], ...data };
+    try { (window.dataLayer = window.dataLayer || []).push(payload); } catch {}
+    try { window.gtag?.("event", payload.event, payload); } catch {}
+    try { window.fbq?.("trackCustom", payload.event, payload); } catch {}
+  }
+  // Playable-ad containers intercept CTA clicks (Meta, MRAID, Google Ads HTML5).
+  function openCta(e, url) {
+    track("cta_click", { url });
+    if (window.FbPlayableAd?.onCTAClick) { e.preventDefault(); window.FbPlayableAd.onCTAClick(); return; }
+    if (window.mraid?.open) { e.preventDefault(); window.mraid.open(url); return; }
+    if (window.ExitApi?.exit) { e.preventDefault(); window.ExitApi.exit(); return; }
+  }
+
+  /* ======================= Sizing ===================================== */
+  const fit = () => stage.style.setProperty("--u", stage.clientWidth / 100 + "px");
+  addEventListener("resize", fit);
+  fit();
+
+  /* ======================= Static content ============================= */
+  $("#brandLogo").innerHTML = `${LOGO_SVG}<span>RentNest</span>`;
+  $("#endMark").innerHTML = LOGO_SVG;
+  const ICON = {
+    soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m23 9-6 6M17 9l6 6"/></svg>',
+    soundOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>',
+  };
+  $("#soundBtn").innerHTML = ICON.soundOff;
+  $("#pauseBtn").innerHTML = ICON.pause;
+
+  $("#cityChips").innerHTML = CITIES.map(([n, s], i) => `<button class="chip" data-i="${i}"><span class="pin">${PIN_SVG}</span>${n}</button>`).join("");
+  const tileHtml = (mode) => ITEMS.map(([n, , p], i) => `<button class="tile" data-i="${i}"><div class="n">${n}</div><div class="p">${mode === "earn" ? `earn ~${inr(p)}/day` : `from ${inr(p)}/day`}</div></button>`).join("");
+  $("#catTiles").innerHTML = tileHtml("rent");
+  $("#itemTiles").innerHTML = tileHtml("earn");
+  const peek = phone(IMG.browse, "RentNest search results");
+  $("#pricePeek").appendChild(peek);
+
+  /* ======================= Dynamic content ============================ */
+  function renderPrice() {
+    const [name, , perDay, deposit, occasion] = state.item;
+    const days = 2;
+    const rent = perDay * days, fee = Math.round(rent * SERVICE_FEE), gst = Math.round(fee * GST);
+    $("#priceEyebrow").textContent = `Near you in ${state.city[0]}`;
+    $("#priceTitle").textContent = `A ${state.item[5]} for ${occasion}`;
+    $("#receipt").innerHTML = `
+      <div class="head"><span>Weekend · 2 days</span><span>Example price</span></div>
+      <div class="rows">
+        <div class="row"><span>Rent · ${inr(perDay)} × 2 days</span><b data-count="${rent}">₹0</b></div>
+        <div class="row"><span>Service fee (5%)</span><b data-count="${fee}">₹0</b></div>
+        <div class="row"><span>GST on fee</span><b data-count="${gst}">₹0</b></div>
+        <div class="row"><span>Refundable deposit</span><b data-count="${deposit}">₹0</b></div>
+        <div class="row total"><span>You pay today</span><span data-count="${rent + fee + gst + deposit}">₹0</span></div>
+      </div>
+      <div class="note"><span class="tick">${CHECK_SVG}</span>${inr(deposit)} comes back after you return it</div>`;
+  }
+
+  function renderEarn() {
+    const [, , perDay] = state.item;
+    const rate = state.pro ? PRO_COMMISSION : COMMISSION;
+    const gross = perDay * state.days;
+    const net = gross * (1 - rate * (1 + GST)) - (state.pro ? PRO_PRICE : 0);
+    $("#earnEyebrow").textContent = `Your ${state.item[5]}`;
+    $("#daysOut").textContent = `${state.days} days`;
+    $("#earnYear").textContent = `That's about ${inr(Math.max(0, net) * 12)} a year`;
+    animateNumber($("#earnNum"), Math.max(0, net));
+    $("#proBtn").setAttribute("aria-pressed", String(state.pro));
+    const standardNet = gross * (1 - COMMISSION * (1 + GST));
+    const diff = Math.round(net - standardNet);
+    $("#proDesc").textContent = state.pro
+      ? diff >= 0 ? `You keep ${inr(diff)} more a month (after the ₹${PRO_PRICE} fee)` : `Pro pays off when you rent more often`
+      : `10% commission instead of 15%, for ₹${PRO_PRICE}/month`;
+  }
+
+  function renderTrust() {
+    const rows = state.path === "earn"
+      ? [["Verified renters", "Phone-verified, with ID checks on high-value bookings."], ["A deposit on every rental", "Held by us and used first if anything goes wrong."], ["Photo-checked handover", "Both sides log time-stamped photos. Disputes get a fair review."]]
+      : [["Verified owners", "Phone and ID verified, with public reviews."], ["Your deposit is protected", "We hold it and release it after the return check."], ["Payments stay on the platform", "Pay with UPI or card. Contact details unlock after payment."]];
+    $("#trustList").innerHTML = rows.map(([t, d]) => `<li><span class="tick">${CHECK_SVG}</span><span><span class="t" style="display:block">${t}</span><span class="d" style="display:block">${d}</span></span></li>`).join("");
+  }
+
+  function renderEnd() {
+    const [name, slug] = state.item;
+    const cta = $("#cta");
+    if (state.path === "earn") {
+      const rate = state.pro ? PRO_COMMISSION : COMMISSION;
+      const net = Math.max(0, state.item[2] * state.days * (1 - rate * (1 + GST)) - (state.pro ? PRO_PRICE : 0));
+      $("#endSummary").innerHTML = `Your ${state.item[5]} could earn <b>${inr(net)}/month</b>`;
+      cta.textContent = `List your ${state.item[5]} free`;
+      cta.href = `${SITE_URL}/dashboard/listings/new?${UTM}&utm_content=earn_${slug}`;
+      $("#switchBtn").textContent = "Rent something instead";
+    } else {
+      $("#endSummary").innerHTML = `<b>${name}</b> near you in <b>${state.city[0]}</b>`;
+      cta.textContent = `Find a ${state.item[5]} in ${state.city[0]}`;
+      cta.href = `${SITE_URL}/rent/${slug}/${state.city[1]}?${UTM}&utm_content=rent_${slug}_${state.city[1]}`;
+      $("#switchBtn").textContent = "Earn from your stuff too";
+    }
+  }
+
+  const numAnim = new WeakMap();
+  function animateNumber(el, to, dur = 600) {
+    const from = numAnim.get(el)?.value ?? 0;
+    const start = performance.now();
+    const step = (now) => {
+      const p = reduced ? 1 : ease.out(clamp((now - start) / dur));
+      const v = lerp(from, to, p);
+      el.textContent = inr(v);
+      numAnim.set(el, { value: v });
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /* ======================= Scene animations =========================== */
+  const anim = {
+    hook(t) {
+      document.querySelectorAll("#hook .line > span").forEach((s, i) => (s.style.transform = `translateY(${(1 - k(t, 0.12 + i * 0.28, 0.55)) * 110}%)`));
+      const cam = $("#hook .cam");
+      const p = k(t, 0.5, 0.8, ease.back);
+      cam.style.transform = `scale(${lerp(0.7, 1, p)}) rotate(${lerp(-10, -3, p) + Math.sin(t * 2) * 1.2}deg)`;
+      cam.style.opacity = k(t, 0.5, 0.4);
+      $("#hook .pricetag").style.transform = `scale(${k(t, 1.1, 0.5, ease.back)}) rotate(8deg)`;
+    },
+    choose(t) {
+      document.querySelectorAll("#choose .choice").forEach((c, i) => {
+        const p = k(t, 0.25 + i * 0.15, 0.5, ease.back);
+        c.style.opacity = clamp(p * 1.3);
+        c.style.translate = `0 ${(1 - p) * 40}px`;
+      });
+    },
+    city(t) {
+      document.querySelectorAll("#city .chip").forEach((c, i) => { const p = k(t, 0.1 + i * 0.05, 0.4, ease.back); c.style.opacity = clamp(p * 1.3); c.style.scale = lerp(0.8, 1, p); });
+    },
+    cat(t) { stagger("#cat .tile", t); },
+    item(t) { stagger("#item .tile", t); },
+    price(t) {
+      const r = $("#receipt");
+      const p = k(t, 0.2, 0.6, ease.back);
+      r.style.translate = `0 ${(1 - p) * 60}px`;
+      r.style.opacity = clamp(p * 1.3);
+      r.querySelectorAll("[data-count]").forEach((el, i) => (el.textContent = inr(+el.dataset.count * k(t, 0.6 + i * 0.25, 0.7))));
+      r.querySelector(".note").style.opacity = k(t, 2.2, 0.5);
+      peek.parentElement.style.translate = `0 ${(1 - k(t, 0.8, 0.9)) * 40}%`;
+    },
+    earn(t) {
+      document.querySelectorAll("#earn .slider, #earn .pro, #earn .primary").forEach((e, i) => { const p = k(t, 0.3 + i * 0.12, 0.5); e.style.opacity = p; e.style.translate = `0 ${(1 - p) * 24}px`; });
+    },
+    trust(t) {
+      document.querySelectorAll("#trust li").forEach((li, i) => {
+        const p = k(t, 0.3 + i * 0.5, 0.5);
+        li.style.opacity = p;
+        li.style.translate = `${(1 - p) * -24}px 0`;
+        li.querySelector(".check-path").style.setProperty("--dash", 1 - k(t, 0.5 + i * 0.5, 0.4));
+      });
+    },
+    end(t) {
+      $("#endMark").style.transform = `scale(${k(t, 0.05, 0.7, ease.back)})`;
+      document.querySelectorAll("#end .name, #end .tag, #end .summary, #end .primary, #end .row, #end #replayBtn, #end .fine").forEach((e, i) => {
+        const p = k(t, 0.3 + i * 0.12, 0.5);
+        e.style.opacity = p;
+        e.style.translate = `0 ${(1 - p) * 20}px`;
+      });
+    },
+  };
+  function stagger(sel, t) {
+    document.querySelectorAll(sel).forEach((c, i) => {
+      const p = k(t, 0.15 + i * 0.07, 0.5, ease.back);
+      c.style.opacity = clamp(p * 1.3);
+      c.style.translate = `0 ${(1 - p) * 40}px`;
+    });
+  }
+
+  /* ======================= Flow control =============================== */
+  function renderSegs() {
+    $("#segs").innerHTML = flow.map((id) => `<div class="seg" data-id="${id}"><i></i></div>`).join("");
+  }
+  function updateSegs(localT) {
+    const idx = flow.indexOf(current);
+    document.querySelectorAll(".seg i").forEach((bar, i) => {
+      const id = flow[i];
+      const auto = +document.getElementById(id).dataset.auto || 0;
+      bar.style.width = i < idx ? "100%" : i > idx ? "0%" : auto ? `${clamp(localT / auto) * 100}%` : "100%";
+    });
+  }
+
+  function go(id) {
+    if (current) document.getElementById(current).classList.remove("on");
+    current = id;
+    state.visited.add(id);
+    const el = document.getElementById(id);
+    if (id === "price") renderPrice();
+    if (id === "earn") renderEarn();
+    if (id === "trust") renderTrust();
+    if (id === "end") renderEnd();
+    el.classList.add("on");
+    const onPaper = el.classList.contains("paper");
+    $("#chrome").classList.toggle("on-paper", onPaper);
+    $("#hint").classList.toggle("on-paper-hint", onPaper);
+    const auto = +el.dataset.auto || 0;
+    $("#tapzones").hidden = !auto;
+    $("#hint").hidden = !auto;
+    $("#pauseBtn").style.visibility = auto ? "visible" : "hidden";
+    t0 = performance.now();
+    paused = false;
+    $("#pauseBtn").innerHTML = ICON.pause;
+    track("chapter", { chapter: id });
+    // Move focus to the first control on interactive chapters (keyboard users)
+    if (!auto) setTimeout(() => { const hd = el.querySelector("h2"); if (hd) { hd.tabIndex = -1; hd.focus({ preventScroll: true }); } }, 350);
+  }
+  const next = () => { const i = flow.indexOf(current); if (i < flow.length - 1) go(flow[i + 1]); };
+  const back = () => { const i = flow.indexOf(current); if (i > 0) go(flow[i - 1]); };
+
+  function frame(now) {
+    const lt = reduced ? 99 : (paused ? pausedAt : now - t0) / 1000;
+    anim[current]?.(lt);
+    updateSegs(paused ? pausedAt / 1000 : (now - t0) / 1000);
+    const auto = +document.getElementById(current).dataset.auto || 0;
+    if (auto && !paused && (now - t0) / 1000 >= auto) next();
+    requestAnimationFrame(frame);
+  }
+
+  function setPath(path) {
+    state.path = path;
+    flow = path === "earn" ? ["hook", "choose", "item", "earn", "trust", "end"] : ["hook", "choose", "city", "cat", "price", "trust", "end"];
+    renderSegs();
+    track("choose_path");
+  }
+
+  /* ======================= Events ===================================== */
+  document.querySelectorAll("#choose .choice").forEach((b) => b.addEventListener("click", () => { setPath(b.dataset.path); startAudioIfWanted(); next(); }));
+  $("#cityChips").addEventListener("click", (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    document.querySelectorAll("#cityChips .chip").forEach((c) => c.classList.toggle("sel", c === b));
+    state.city = CITIES[+b.dataset.i];
+    track("pick_city");
+    setTimeout(next, 280);
+  });
+  $("#catTiles").addEventListener("click", (e) => { const b = e.target.closest(".tile"); if (!b) return; state.item = ITEMS[+b.dataset.i]; track("pick_category"); next(); });
+  $("#itemTiles").addEventListener("click", (e) => { const b = e.target.closest(".tile"); if (!b) return; state.item = ITEMS[+b.dataset.i]; track("pick_item"); next(); });
+  $("#days").addEventListener("input", (e) => { state.days = +e.target.value; renderEarn(); });
+  $("#days").addEventListener("change", () => track("set_days", { days: state.days }));
+  $("#proBtn").addEventListener("click", () => { state.pro = !state.pro; renderEarn(); track("toggle_pro", { pro: state.pro }); });
+  $("#earnNext").addEventListener("click", next);
+  $("#tapNext").addEventListener("click", next);
+  $("#tapBack").addEventListener("click", back);
+  $("#cta").addEventListener("click", (e) => openCta(e, $("#cta").href));
+  $("#replayBtn").addEventListener("click", () => { track("replay"); go("hook"); });
+  $("#switchBtn").addEventListener("click", () => { setPath(state.path === "earn" ? "rent" : "earn"); track("switch_path"); go(flow[2]); });
+  $("#shareBtn").addEventListener("click", async () => {
+    const url = location.href.split("#")[0];
+    try { await navigator.clipboard.writeText(url); toast("Link copied"); } catch { toast(url); }
+    track("share");
+  });
+  $("#pauseBtn").addEventListener("click", togglePause);
+  addEventListener("keydown", (e) => {
+    const auto = +document.getElementById(current).dataset.auto || 0;
+    if (e.key === " " && auto) { e.preventDefault(); togglePause(); }
+    if (e.key === "ArrowRight" && auto) next();
+    if (e.key === "ArrowLeft") back();
+  });
+  function togglePause() {
+    if (paused) { t0 = performance.now() - pausedAt; paused = false; $("#pauseBtn").innerHTML = ICON.pause; $("#pauseBtn").setAttribute("aria-label", "Pause"); }
+    else { pausedAt = performance.now() - t0; paused = true; $("#pauseBtn").innerHTML = ICON.play; $("#pauseBtn").setAttribute("aria-label", "Play"); }
+  }
+  function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 2200); }
+
+  /* ======================= Sound ====================================== */
+  // Browsers only allow sound after a tap, so music starts from the sound button.
+  const audio = new Audio(AUDIO_SRC);
+  audio.loop = true;
+  audio.volume = 0.55;
+  let soundWanted = false;
+  function startAudioIfWanted() { if (soundWanted) audio.play().catch(() => {}); }
+  $("#soundBtn").addEventListener("click", () => {
+    soundWanted = !soundWanted;
+    if (soundWanted) audio.play().catch(() => {}); else audio.pause();
+    $("#soundBtn").innerHTML = soundWanted ? ICON.soundOn : ICON.soundOff;
+    $("#soundBtn").setAttribute("aria-pressed", String(soundWanted));
+    $("#soundBtn").setAttribute("aria-label", soundWanted ? "Turn sound off" : "Turn sound on");
+    track("sound", { on: soundWanted });
+  });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) audio.pause(); else startAudioIfWanted(); });
+
+  /* ======================= Start ====================================== */
+  renderSegs();
+  go("hook");
+  requestAnimationFrame(frame);
+  // Deep link: #earn or #rent skips straight to that path (useful per-ad-set)
+  const hash = location.hash.slice(1);
+  if (hash === "earn" || hash === "rent") { setPath(hash); go(flow[2]); }
+})();
+</script>
